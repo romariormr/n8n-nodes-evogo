@@ -1,0 +1,47 @@
+{
+  "name": "n8n-nodes-evolutiongo",
+  "version": "0.1.0",
+  "description": "n8n community node for Evolution GO WhatsApp API (messages, media, buttons, lists, carousel, groups, instances with dynamic dropdown)",
+  "keywords": [
+    "n8n-community-node-package",
+    "evolution-go",
+    "evolutiongo",
+    "whatsapp",
+    "whatsapp-api"
+  ],
+  "license": "MIT",
+  "author": "Romario Brito",
+  "homepage": "https://github.com/romariormr/n8n-nodes-evolutiongo",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/romariormr/n8n-nodes-evolutiongo.git"
+  },
+  "bugs": {
+    "url": "https://github.com/romariormr/n8n-nodes-evolutiongo/issues"
+  },
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').copyFileSync('nodes/EvolutionGo/evolutiongo.svg','dist/nodes/EvolutionGo/evolutiongo.svg')\"",
+    "prepublishOnly": "npm run build"
+  },
+  "files": [
+    "dist",
+    "index.js"
+  ],
+  "n8n": {
+    "n8nNodesApiVersion": 1,
+    "credentials": [
+      "dist/credentials/EvolutionGoApi.credentials.js"
+    ],
+    "nodes": [
+      "dist/nodes/EvolutionGo/EvolutionGo.node.js"
+    ]
+  },
+  "devDependencies": {
+    "n8n-workflow": "^1.70.0",
+    "typescript": "^5.5.0"
+  },
+  "peerDependencies": {
+    "n8n-workflow": "*"
+  }
+}
