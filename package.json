@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-evolutiongo",
+  "name": "n8n-nodes-evogo",
   "version": "0.1.0",
   "description": "n8n community node for Evolution GO WhatsApp API (messages, media, buttons, lists, carousel, groups, instances with dynamic dropdown)",
   "keywords": [
@@ -11,13 +11,13 @@
   ],
   "license": "MIT",
   "author": "Romario Brito",
-  "homepage": "https://github.com/romariormr/n8n-nodes-evolutiongo",
+  "homepage": "https://github.com/romariormr/n8n-nodes-evogo",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/romariormr/n8n-nodes-evolutiongo.git"
+    "url": "git+https://github.com/romariormr/n8n-nodes-evogo.git"
   },
   "bugs": {
-    "url": "https://github.com/romariormr/n8n-nodes-evolutiongo/issues"
+    "url": "https://github.com/romariormr/n8n-nodes-evogo/issues"
   },
   "main": "index.js",
   "scripts": {
