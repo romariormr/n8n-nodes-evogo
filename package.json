@@ -1,5 +1,5 @@
 {
-  "name": "n8n-nodes-evogo",
+  "name": "@romariormr/n8n-nodes-evogo",
   "version": "0.1.0",
   "description": "n8n community node for Evolution GO WhatsApp API (messages, media, buttons, lists, carousel, groups, instances with dynamic dropdown)",
   "keywords": [

@@ -3,11 +3,11 @@
 Node customizado do n8n para a API **[Evolution GO](https://github.com/romariormr/evolution-go-custom)** (WhatsApp),
 no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instâncias** e resolução automática de token.
 
-![npm](https://img.shields.io/npm/v/n8n-nodes-evogo)
+![npm](https://img.shields.io/npm/v/%40romariormr%2Fn8n-nodes-evogo)
 
 ## Instalação
 
-**Pela UI do n8n** (recomendado): *Settings → Community Nodes → Install* → `n8n-nodes-evogo`
+**Pela UI do n8n** (recomendado): *Settings → Community Nodes → Install* → `@romariormr/n8n-nodes-evogo`
 
 **Manual** (self-hosted): copiar os arquivos de `dist/` para a pasta apontada por `N8N_CUSTOM_EXTENSIONS` e reiniciar o n8n.
 
