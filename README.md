@@ -17,7 +17,12 @@ no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instânci
 |---|---|
 | **Mensagem** | Texto, Mídia (imagem/vídeo/áudio/documento por URL), Botões (reply/url/call/copy/**pix**), Lista, Carrossel, Enquete, Localização, Contato, Sticker, Reagir, Marcar como lida, Editar, Apagar, Presença (digitando/gravando) |
 | **Grupo** | Listar, Meus grupos, Info, Criar, Link de convite, Entrar via link, Sair, Participantes (add/remove/promote/demote), Nome, Descrição, Foto |
+| **Canal** | Listar canais inscritos, Info, Buscar por convite, Inscrever-se, Mensagens do canal, Criar canal |
 | **Instância** | Listar todas (API key global), Configurar webhook/eventos |
+
+> 💬 **Enviar mensagem para um canal**: use o resource **Mensagem** normalmente, colocando o
+> JID do canal (termina em `@newsletter`) no campo **Número**. Use **Canal → Listar Canais**
+> pra descobrir o JID de cada canal que você segue.
 
 ## Credencial `Evolution GO API`
 
@@ -65,6 +70,12 @@ Anti-loop: filtre `fromMe != true` e exija `message.conversation` não-vazio ant
 npm install
 npm run build   # tsc + copia o ícone → dist/
 ```
+
+## ☕ Apoie O Projeto
+
+Se esse node te ajudou, considere apoiar:
+
+[![Buy Me a Coffee](https://img.shields.io/badge/Buy%20Me%20a%20Coffee-☕-FFDD00?style=for-the-badge)](https://buymeacoffee.com/romariormr)
 
 ## Licença
 
