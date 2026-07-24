@@ -18,7 +18,7 @@ export class EvolutionGo implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-		description: 'Envia mensagens WhatsApp via Evolution GO (texto, mídia, botões, listas, carrossel, grupos)',
+		description: 'Envia mensagens WhatsApp via Evolution GO (texto, mídia, botões, listas, carrossel, grupos, canais)',
 		defaults: {
 			name: 'Evolution GO',
 		},
@@ -40,6 +40,7 @@ export class EvolutionGo implements INodeType {
 				options: [
 					{ name: 'Mensagem', value: 'message' },
 					{ name: 'Grupo', value: 'group' },
+					{ name: 'Canal', value: 'channel' },
 					{ name: 'Instância', value: 'instance' },
 				],
 				default: 'message',
@@ -94,6 +95,24 @@ export class EvolutionGo implements INodeType {
 				default: 'list',
 			},
 
+			// ── Operations: Channel ──────────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['channel'] } },
+				options: [
+					{ name: 'Listar Canais (Inscritos)', value: 'list', action: 'Listar canais' },
+					{ name: 'Informações Do Canal', value: 'info', action: 'Info do canal' },
+					{ name: 'Buscar Por Convite', value: 'byInvite', action: 'Buscar por convite' },
+					{ name: 'Inscrever-Se', value: 'subscribe', action: 'Inscrever se' },
+					{ name: 'Mensagens Do Canal', value: 'messages', action: 'Mensagens do canal' },
+					{ name: 'Criar Canal', value: 'create', action: 'Criar canal' },
+				],
+				default: 'list',
+			},
+
 			// ── Operations: Instance ─────────────────────────────────
 			{
 				displayName: 'Operation',
@@ -120,7 +139,7 @@ export class EvolutionGo implements INodeType {
 				description:
 					'Instância WhatsApp que envia. Requer API Key GLOBAL na credencial. Deixe vazio para usar a chave da credencial direto (quando ela já é o token da instância). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
-					show: { resource: ['message', 'group'] },
+					show: { resource: ['message', 'group', 'channel'] },
 				},
 			},
 			{
@@ -654,6 +673,59 @@ export class EvolutionGo implements INodeType {
 				displayOptions: { show: { resource: ['group'], operation: ['setPhoto'] } },
 			},
 
+			// ── Channel fields ───────────────────────────────────────
+			{
+				displayName: 'JID Do Canal',
+				name: 'channelJid',
+				type: 'string',
+				default: '',
+				placeholder: '120363XXXXXXXXXX@newsletter',
+				required: true,
+				description: 'Use a operação "Listar Canais" para descobrir o JID',
+				displayOptions: { show: { resource: ['channel'], operation: ['info', 'subscribe', 'messages'] } },
+			},
+			{
+				displayName: 'Chave Do Convite',
+				name: 'inviteKey',
+				type: 'string',
+				default: '',
+				placeholder: 'XXXXXXXXXXXXXXXXXXXX',
+				required: true,
+				description: 'Código no fim do link de convite do canal (https://whatsapp.com/channel/XXXX)',
+				displayOptions: { show: { resource: ['channel'], operation: ['byInvite'] } },
+			},
+			{
+				displayName: 'Nome Do Canal',
+				name: 'channelName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['channel'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Descrição',
+				name: 'channelDescription',
+				type: 'string',
+				typeOptions: { rows: 3 },
+				default: '',
+				displayOptions: { show: { resource: ['channel'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Quantidade De Mensagens',
+				name: 'messagesCount',
+				type: 'number',
+				default: 20,
+				displayOptions: { show: { resource: ['channel'], operation: ['messages'] } },
+			},
+			{
+				displayName: 'Antes Do ID (Paginação)',
+				name: 'messagesBeforeId',
+				type: 'number',
+				default: 0,
+				description: 'Deixe 0 para trazer as mensagens mais recentes',
+				displayOptions: { show: { resource: ['channel'], operation: ['messages'] } },
+			},
+
 			// ── Instance fields ──────────────────────────────────────
 			{
 				displayName: 'Webhook URL',
@@ -1012,6 +1084,40 @@ export class EvolutionGo implements INodeType {
 							endpoint = '/group/photo';
 							body.groupJid = this.getNodeParameter('groupJid', i) as string;
 							body.url = this.getNodeParameter('photoUrl', i) as string;
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'channel') {
+					switch (operation) {
+						case 'list':
+							method = 'GET';
+							endpoint = '/newsletter/list';
+							break;
+						case 'info':
+							endpoint = '/newsletter/info';
+							body.jid = this.getNodeParameter('channelJid', i) as string;
+							break;
+						case 'byInvite':
+							endpoint = '/newsletter/link';
+							body.key = this.getNodeParameter('inviteKey', i) as string;
+							break;
+						case 'subscribe':
+							endpoint = '/newsletter/subscribe';
+							body.jid = this.getNodeParameter('channelJid', i) as string;
+							break;
+						case 'messages':
+							endpoint = '/newsletter/messages';
+							body.jid = this.getNodeParameter('channelJid', i) as string;
+							body.count = this.getNodeParameter('messagesCount', i, 20) as number;
+							body.before_id = this.getNodeParameter('messagesBeforeId', i, 0) as number;
+							break;
+						case 'create':
+							endpoint = '/newsletter/create';
+							body.name = this.getNodeParameter('channelName', i) as string;
+							body.description = this.getNodeParameter('channelDescription', i, '') as string;
 							break;
 						default:
 							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {

@@ -17,7 +17,7 @@ export class EvolutionGoApi implements ICredentialType {
 			displayName: 'Base URL',
 			name: 'baseUrl',
 			type: 'string',
-			default: 'http://172.16.210.58:4000',
+			default: '',
 			placeholder: 'https://evolutiongo.gruponew.com',
 			description: 'URL base da API Evolution GO, sem barra no final',
 			required: true,
