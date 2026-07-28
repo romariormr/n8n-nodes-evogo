@@ -3,3 +3,4 @@ dist/
 *.tgz
 .npmrc
 MEMORIA-PROJETO.md
+graphify-out/
