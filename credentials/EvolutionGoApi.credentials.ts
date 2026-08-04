@@ -10,7 +10,7 @@ export class EvolutionGoApi implements ICredentialType {
 
 	displayName = 'Evolution GO API';
 
-	documentationUrl = 'https://github.com/NathanAshford/evolution-go-custom';
+	documentationUrl = 'https://github.com/romariormr/evolution-go-custom';
 
 	properties: INodeProperties[] = [
 		{
@@ -18,7 +18,7 @@ export class EvolutionGoApi implements ICredentialType {
 			name: 'baseUrl',
 			type: 'string',
 			default: '',
-			placeholder: 'https://evolutiongo.gruponew.com',
+			placeholder: 'https://your-evolution-go-instance.example.com',
 			description: 'URL base da API Evolution GO, sem barra no final',
 			required: true,
 		},
