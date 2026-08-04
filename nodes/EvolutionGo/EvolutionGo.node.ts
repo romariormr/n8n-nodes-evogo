@@ -137,7 +137,7 @@ export class EvolutionGo implements INodeType {
 				},
 				default: '',
 				description:
-					'Instância WhatsApp que envia. Requer API Key GLOBAL na credencial. Deixe vazio para usar a chave da credencial direto (quando ela já é o token da instância). Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
+					'Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
 					show: { resource: ['message', 'group', 'channel'] },
 				},
@@ -770,6 +770,7 @@ export class EvolutionGo implements INodeType {
 
 				let instances: IDataObject[] = [];
 				let loadError = '';
+				let isAuthError = false;
 				try {
 					const response = (await this.helpers.httpRequest({
 						method: 'GET',
@@ -786,16 +787,32 @@ export class EvolutionGo implements INodeType {
 						loadError = `resposta inesperada: ${JSON.stringify(response).slice(0, 80)}`;
 					}
 				} catch (error) {
-					loadError = (error as Error).message?.slice(0, 100) || 'erro desconhecido';
+					const message = (error as Error).message || '';
+					isAuthError = message.includes('401') || message.includes('403');
+					loadError = message.slice(0, 100) || 'erro desconhecido';
 				}
 
 				if (loadError) {
+					// 401/403 aqui é o caso ESPERADO quando a credencial tem uma chave de
+					// instância (não a GLOBAL) — listar todas as instâncias é uma operação
+					// só de admin. Não é erro do usuário, então não usa tom de alerta.
+					if (isAuthError) {
+						return [
+							defaultOption,
+							{
+								name: 'ℹ️ Não foi possível listar instâncias (chave não é GLOBAL)',
+								value: '__error__',
+								description:
+									'Normal se você está usando uma chave de instância — deixe no valor padrão acima pra usar essa chave direto, sem precisar listar nada.',
+							},
+						];
+					}
 					return [
 						defaultOption,
 						{
 							name: `⚠️ Falha Ao Listar Instâncias: ${loadError}`,
 							value: '__error__',
-							description: 'Verifique se a API Key da credencial é a GLOBAL',
+							description: 'Confira a Base URL da credencial e a conectividade com o servidor',
 						},
 					];
 				}
