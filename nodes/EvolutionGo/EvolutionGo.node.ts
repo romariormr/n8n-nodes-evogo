@@ -590,6 +590,14 @@ export class EvolutionGo implements INodeType {
 						type: 'boolean',
 						default: true,
 					},
+					{
+						displayName: 'Incluir Info Da Instância',
+						name: 'includeInstanceInfo',
+						type: 'boolean',
+						default: false,
+						description:
+							'Whether to identify which instance actually sent the message (extra call to /instance/status with the same key used) — useful when "Instância" ficou no valor padrão e não dá pra saber qual instância é só pelos outros campos',
+					},
 				],
 			},
 
@@ -1187,6 +1195,32 @@ export class EvolutionGo implements INodeType {
 				} catch {
 					out = { data: String(response) };
 				}
+
+				// Identifica qual instância enviou de fato (mesma chave usada na requisição
+				// acima) — útil quando "Instância" ficou no valor padrão (chave da
+				// credencial) e não dá pra saber qual instância é só olhando os outros campos.
+				const wantsInstanceInfo =
+					(this.getNodeParameter('additionalOptions', i, {}) as IDataObject)
+						.includeInstanceInfo === true;
+				if (wantsInstanceInfo) {
+					try {
+						const statusResp = (await this.helpers.httpRequest({
+							method: 'GET',
+							url: `${baseUrl}/instance/status`,
+							headers: { apikey },
+							json: true,
+							skipSslCertificateValidation: skipSsl,
+						})) as IDataObject;
+						out._instance = (statusResp?.data as IDataObject) ?? statusResp;
+					} catch (statusError) {
+						out._instance = {
+							error:
+								(statusError as Error).message?.slice(0, 100) ||
+								'não foi possível identificar a instância',
+						};
+					}
+				}
+
 				returnData.push({ json: out, pairedItem: { item: i } });
 			} catch (error) {
 				const e = error as IDataObject & { response?: IDataObject; message?: string };
