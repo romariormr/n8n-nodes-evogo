@@ -41,6 +41,7 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Mensagem', value: 'message' },
 					{ name: 'Grupo', value: 'group' },
 					{ name: 'Canal', value: 'channel' },
+					{ name: 'Chat', value: 'chat' },
 					{ name: 'Instância', value: 'instance' },
 				],
 				default: 'message',
@@ -113,6 +114,29 @@ export class EvolutionGo implements INodeType {
 				default: 'list',
 			},
 
+			// ── Operations: Chat ─────────────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['chat'] } },
+				options: [
+					{ name: 'Fixar Conversa', value: 'pin', action: 'Fixar conversa' },
+					{ name: 'Desfixar Conversa', value: 'unpin', action: 'Desfixar conversa' },
+					{ name: 'Arquivar Conversa', value: 'archive', action: 'Arquivar conversa' },
+					{ name: 'Desarquivar Conversa', value: 'unarchive', action: 'Desarquivar conversa' },
+					{ name: 'Silenciar Conversa', value: 'mute', action: 'Silenciar conversa' },
+					{ name: 'Dessilenciar Conversa', value: 'unmute', action: 'Dessilenciar conversa' },
+					{
+						name: 'Buscar Histórico De Mensagens',
+						value: 'historySync',
+						action: 'Buscar historico de mensagens',
+					},
+				],
+				default: 'pin',
+			},
+
 			// ── Operations: Instance ─────────────────────────────────
 			{
 				displayName: 'Operation',
@@ -139,7 +163,7 @@ export class EvolutionGo implements INodeType {
 				description:
 					'Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
-					show: { resource: ['message', 'group', 'channel'] },
+					show: { resource: ['message', 'group', 'channel', 'chat'] },
 				},
 			},
 			{
@@ -734,6 +758,71 @@ export class EvolutionGo implements INodeType {
 				displayOptions: { show: { resource: ['channel'], operation: ['messages'] } },
 			},
 
+			// ── Chat fields ──────────────────────────────────────────
+			{
+				displayName: 'Chat (Número/JID)',
+				name: 'chatJid',
+				type: 'string',
+				default: '',
+				placeholder: '5585999999999 ou 120363...@g.us',
+				description: 'Número destino (DDI+DDD+número) ou JID de grupo',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['chat'],
+						operation: ['pin', 'unpin', 'archive', 'unarchive', 'mute', 'unmute', 'historySync'],
+					},
+				},
+			},
+			{
+				displayName: 'ID Da Mensagem De Referência',
+				name: 'referenceMessageId',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'ID de uma mensagem já conhecida desse chat — o WhatsApp usa como ponto de partida pra reenviar o histórico mais antigo',
+				displayOptions: { show: { resource: ['chat'], operation: ['historySync'] } },
+			},
+			{
+				displayName: 'Timestamp Da Mensagem De Referência',
+				name: 'referenceTimestamp',
+				type: 'dateTime',
+				default: '',
+				required: true,
+				description: 'Data/hora da mensagem de referência acima',
+				displayOptions: { show: { resource: ['chat'], operation: ['historySync'] } },
+			},
+			{
+				displayName: 'Mensagem De Referência É Minha',
+				name: 'referenceIsFromMe',
+				type: 'boolean',
+				default: false,
+				displayOptions: { show: { resource: ['chat'], operation: ['historySync'] } },
+			},
+			{
+				displayName: 'É Grupo',
+				name: 'referenceIsGroup',
+				type: 'boolean',
+				default: false,
+				displayOptions: { show: { resource: ['chat'], operation: ['historySync'] } },
+			},
+			{
+				displayName: 'Quantidade De Mensagens',
+				name: 'historyCount',
+				type: 'number',
+				default: 50,
+				description: 'Quantas mensagens antigas pedir pro WhatsApp reenviar',
+				displayOptions: { show: { resource: ['chat'], operation: ['historySync'] } },
+			},
+			{
+				displayName:
+					'Isso só solicita o reenvio ao WhatsApp — não retorna as mensagens nesta resposta. O histórico chega depois pelos eventos normais de mensagem recebida (webhook), igual a qualquer outra mensagem.',
+				name: 'historySyncNote',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { resource: ['chat'], operation: ['historySync'] } },
+			},
+
 			// ── Instance fields ──────────────────────────────────────
 			{
 				displayName: 'Webhook URL',
@@ -1143,6 +1232,48 @@ export class EvolutionGo implements INodeType {
 							endpoint = '/newsletter/create';
 							body.name = this.getNodeParameter('channelName', i) as string;
 							body.description = this.getNodeParameter('channelDescription', i, '') as string;
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'chat') {
+					switch (operation) {
+						case 'pin':
+							endpoint = '/chat/pin';
+							body.chat = this.getNodeParameter('chatJid', i) as string;
+							break;
+						case 'unpin':
+							endpoint = '/chat/unpin';
+							body.chat = this.getNodeParameter('chatJid', i) as string;
+							break;
+						case 'archive':
+							endpoint = '/chat/archive';
+							body.chat = this.getNodeParameter('chatJid', i) as string;
+							break;
+						case 'unarchive':
+							endpoint = '/chat/unarchive';
+							body.chat = this.getNodeParameter('chatJid', i) as string;
+							break;
+						case 'mute':
+							endpoint = '/chat/mute';
+							body.chat = this.getNodeParameter('chatJid', i) as string;
+							break;
+						case 'unmute':
+							endpoint = '/chat/unmute';
+							body.chat = this.getNodeParameter('chatJid', i) as string;
+							break;
+						case 'historySync':
+							endpoint = '/chat/history-sync-request';
+							body.messageInfo = {
+								Chat: this.getNodeParameter('chatJid', i) as string,
+								IsFromMe: this.getNodeParameter('referenceIsFromMe', i, false) as boolean,
+								IsGroup: this.getNodeParameter('referenceIsGroup', i, false) as boolean,
+								ID: this.getNodeParameter('referenceMessageId', i) as string,
+								Timestamp: this.getNodeParameter('referenceTimestamp', i) as string,
+							};
+							body.count = this.getNodeParameter('historyCount', i, 50) as number;
 							break;
 						default:
 							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
