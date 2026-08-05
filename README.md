@@ -19,6 +19,8 @@ no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instânci
 | **Grupo** | Listar, Meus grupos, Info, Criar, Link de convite, Entrar via link, Sair, Participantes (add/remove/promote/demote), Nome, Descrição, Foto, **Atualizar Configurações** (announce/locked/aprovação/quem adiciona) |
 | **Canal** | Listar canais inscritos, Info, Buscar por convite, Inscrever-se, Mensagens do canal, Criar canal |
 | **Chat** | Fixar, Desfixar, Arquivar, Desarquivar, Silenciar, Dessilenciar, Buscar histórico de mensagens (solicita reenvio ao WhatsApp — async), **Procurar Mensagens** (busca por número, paginado — só mensagens recebidas desde a 0.2.6) |
+| **Perfil** | Buscar perfil, Buscar perfil profissional (Business), Atualizar nome, Atualizar status, Atualizar/Remover foto, Buscar/Atualizar configurações de privacidade |
+| **Integração** | Chatwoot: buscar/definir/remover configuração, resetar status da conversa (precisa selecionar uma instância real, não a chave da credencial) |
 | **Instância** | Listar todas (API key global), Configurar webhook/eventos |
 
 > 💬 **Enviar mensagem para um canal**: use o resource **Mensagem** normalmente, colocando o
