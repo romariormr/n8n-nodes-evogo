@@ -18,6 +18,7 @@ no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instânci
 | **Mensagem** | Texto, Mídia (imagem/vídeo/áudio/documento por URL), Botões (reply/url/call/copy/**pix**), Lista, Carrossel, Enquete, Localização, Contato, Sticker, Reagir, Marcar como lida, Editar, Apagar, Presença (digitando/gravando) |
 | **Grupo** | Listar, Meus grupos, Info, Criar, Link de convite, Entrar via link, Sair, Participantes (add/remove/promote/demote), Nome, Descrição, Foto |
 | **Canal** | Listar canais inscritos, Info, Buscar por convite, Inscrever-se, Mensagens do canal, Criar canal |
+| **Chat** | Fixar, Desfixar, Arquivar, Desarquivar, Silenciar, Dessilenciar, Buscar histórico de mensagens (solicita reenvio ao WhatsApp) |
 | **Instância** | Listar todas (API key global), Configurar webhook/eventos |
 
 > 💬 **Enviar mensagem para um canal**: use o resource **Mensagem** normalmente, colocando o
