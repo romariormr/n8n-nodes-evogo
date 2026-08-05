@@ -42,6 +42,8 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Grupo', value: 'group' },
 					{ name: 'Canal', value: 'channel' },
 					{ name: 'Chat', value: 'chat' },
+					{ name: 'Perfil', value: 'profile' },
+					{ name: 'Integração', value: 'integration' },
 					{ name: 'Instância', value: 'instance' },
 				],
 				default: 'message',
@@ -139,6 +141,42 @@ export class EvolutionGo implements INodeType {
 				default: 'pin',
 			},
 
+			// ── Operations: Profile ──────────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['profile'] } },
+				options: [
+					{ name: 'Buscar Perfil', value: 'getProfile', action: 'Buscar perfil' },
+					{ name: 'Buscar Perfil Profissional', value: 'getBusinessProfile', action: 'Buscar perfil profissional' },
+					{ name: 'Atualizar Nome Do Perfil', value: 'setProfileName', action: 'Atualizar nome do perfil' },
+					{ name: 'Atualizar Status', value: 'setProfileStatus', action: 'Atualizar status' },
+					{ name: 'Atualizar Foto Do Perfil', value: 'setProfilePicture', action: 'Atualizar foto do perfil' },
+					{ name: 'Remover Foto Do Perfil', value: 'removeProfilePicture', action: 'Remover foto do perfil' },
+					{ name: 'Buscar Configurações De Privacidade', value: 'getPrivacy', action: 'Buscar configuracoes de privacidade' },
+					{ name: 'Atualizar Configurações De Privacidade', value: 'setPrivacy', action: 'Atualizar configuracoes de privacidade' },
+				],
+				default: 'getProfile',
+			},
+
+			// ── Operations: Integration (Chatwoot) ───────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['integration'] } },
+				options: [
+					{ name: 'Buscar Configuração Do Chatwoot', value: 'getChatwoot', action: 'Buscar configuracao do chatwoot' },
+					{ name: 'Definir Configuração Do Chatwoot', value: 'setChatwoot', action: 'Definir configuracao do chatwoot' },
+					{ name: 'Remover Configuração Do Chatwoot', value: 'deleteChatwoot', action: 'Remover configuracao do chatwoot' },
+					{ name: 'Resetar Status Da Conversa', value: 'resetChatwootStatus', action: 'Resetar status da conversa' },
+				],
+				default: 'getChatwoot',
+			},
+
 			// ── Operations: Instance ─────────────────────────────────
 			{
 				displayName: 'Operation',
@@ -165,7 +203,7 @@ export class EvolutionGo implements INodeType {
 				description:
 					'Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
-					show: { resource: ['message', 'group', 'channel', 'chat'] },
+					show: { resource: ['message', 'group', 'channel', 'chat', 'profile'] },
 				},
 			},
 			{
@@ -180,6 +218,21 @@ export class EvolutionGo implements INodeType {
 					'Instância alvo da configuração. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
 					show: { resource: ['instance'], operation: ['configureWebhook'] },
+				},
+			},
+			{
+				displayName: 'Instância',
+				name: 'instanceId',
+				type: 'options',
+				typeOptions: {
+					loadOptionsMethod: 'getInstances',
+				},
+				default: '',
+				required: true,
+				description:
+					'Escolha uma instância real da lista — diferente das outras operações, a config de Chatwoot precisa do ID explícito da instância na URL. Deixar no valor padrão "— Usar Chave Da Credencial —" vai falhar.',
+				displayOptions: {
+					show: { resource: ['integration'] },
 				},
 			},
 
@@ -877,6 +930,211 @@ export class EvolutionGo implements INodeType {
 				displayOptions: { show: { resource: ['chat'], operation: ['historySync'] } },
 			},
 
+			// ── Profile fields ───────────────────────────────────────
+			{
+				displayName: 'Número',
+				name: 'profileNumber',
+				type: 'string',
+				default: '',
+				placeholder: '5585999999999',
+				required: true,
+				displayOptions: {
+					show: { resource: ['profile'], operation: ['getProfile', 'getBusinessProfile'] },
+				},
+			},
+			{
+				displayName: 'Nome',
+				name: 'profileName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['profile'], operation: ['setProfileName'] } },
+			},
+			{
+				displayName: 'Status (Recado)',
+				name: 'profileStatus',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['profile'], operation: ['setProfileStatus'] } },
+			},
+			{
+				displayName: 'URL Da Imagem',
+				name: 'profilePictureUrl',
+				type: 'string',
+				default: '',
+				placeholder: 'https://exemplo.com/foto.jpg',
+				required: true,
+				description: 'JPEG — outros formatos podem ser rejeitados pelo WhatsApp',
+				displayOptions: { show: { resource: ['profile'], operation: ['setProfilePicture'] } },
+			},
+			{
+				displayName: 'Grupo Add (Quem Adiciona Em Grupos)',
+				name: 'privacyGroupAdd',
+				type: 'options',
+				options: [
+					{ name: 'Todos', value: 'all' },
+					{ name: 'Meus Contatos', value: 'contacts' },
+					{ name: 'Meus Contatos Exceto...', value: 'contact_blacklist' },
+				],
+				default: 'all',
+				displayOptions: { show: { resource: ['profile'], operation: ['setPrivacy'] } },
+			},
+			{
+				displayName: 'Visto Por Último',
+				name: 'privacyLastSeen',
+				type: 'options',
+				options: [
+					{ name: 'Todos', value: 'all' },
+					{ name: 'Meus Contatos', value: 'contacts' },
+					{ name: 'Meus Contatos Exceto...', value: 'contact_blacklist' },
+					{ name: 'Ninguém', value: 'none' },
+				],
+				default: 'all',
+				displayOptions: { show: { resource: ['profile'], operation: ['setPrivacy'] } },
+			},
+			{
+				displayName: 'Status (Stories)',
+				name: 'privacyStatus',
+				type: 'options',
+				options: [
+					{ name: 'Todos', value: 'all' },
+					{ name: 'Meus Contatos', value: 'contacts' },
+					{ name: 'Meus Contatos Exceto...', value: 'contact_blacklist' },
+					{ name: 'Ninguém', value: 'none' },
+				],
+				default: 'all',
+				displayOptions: { show: { resource: ['profile'], operation: ['setPrivacy'] } },
+			},
+			{
+				displayName: 'Foto Do Perfil',
+				name: 'privacyProfile',
+				type: 'options',
+				options: [
+					{ name: 'Todos', value: 'all' },
+					{ name: 'Meus Contatos', value: 'contacts' },
+					{ name: 'Meus Contatos Exceto...', value: 'contact_blacklist' },
+					{ name: 'Ninguém', value: 'none' },
+				],
+				default: 'all',
+				displayOptions: { show: { resource: ['profile'], operation: ['setPrivacy'] } },
+			},
+			{
+				displayName: 'Confirmação De Leitura',
+				name: 'privacyReadReceipts',
+				type: 'options',
+				options: [
+					{ name: 'Todos', value: 'all' },
+					{ name: 'Ninguém', value: 'none' },
+				],
+				default: 'all',
+				displayOptions: { show: { resource: ['profile'], operation: ['setPrivacy'] } },
+			},
+			{
+				displayName: 'Quem Pode Chamar',
+				name: 'privacyCallAdd',
+				type: 'options',
+				options: [
+					{ name: 'Todos', value: 'all' },
+					{ name: 'Meus Contatos', value: 'known' },
+				],
+				default: 'all',
+				displayOptions: { show: { resource: ['profile'], operation: ['setPrivacy'] } },
+			},
+			{
+				displayName: 'Status Online',
+				name: 'privacyOnline',
+				type: 'options',
+				options: [
+					{ name: 'Todos', value: 'all' },
+					{ name: 'Igual Ao Visto Por Último', value: 'match_last_seen' },
+				],
+				default: 'all',
+				displayOptions: { show: { resource: ['profile'], operation: ['setPrivacy'] } },
+			},
+
+			// ── Integration (Chatwoot) fields ────────────────────────
+			{
+				displayName: 'Ativar Chatwoot',
+				name: 'chatwootEnabled',
+				type: 'boolean',
+				default: true,
+				displayOptions: { show: { resource: ['integration'], operation: ['setChatwoot'] } },
+			},
+			{
+				displayName: 'URL Do Chatwoot',
+				name: 'chatwootUrl',
+				type: 'string',
+				default: '',
+				placeholder: 'https://chatwoot.exemplo.com',
+				required: true,
+				displayOptions: { show: { resource: ['integration'], operation: ['setChatwoot'] } },
+			},
+			{
+				displayName: 'ID Da Conta',
+				name: 'chatwootAccountId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['integration'], operation: ['setChatwoot'] } },
+			},
+			{
+				displayName: 'Token De Admin',
+				name: 'chatwootToken',
+				type: 'string',
+				typeOptions: { password: true },
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['integration'], operation: ['setChatwoot'] } },
+			},
+			{
+				displayName: 'Nome Da Inbox',
+				name: 'chatwootNameInbox',
+				type: 'string',
+				default: '',
+				description: 'Se não existir e "Criar Inbox Automaticamente" estiver ativo, tenta criar',
+				displayOptions: { show: { resource: ['integration'], operation: ['setChatwoot'] } },
+			},
+			{
+				displayName: 'Opções Adicionais',
+				name: 'chatwootAdditionalOptions',
+				type: 'collection',
+				placeholder: 'Adicionar opção',
+				default: {},
+				displayOptions: { show: { resource: ['integration'], operation: ['setChatwoot'] } },
+				options: [
+					{ displayName: 'Assinar Mensagens Do Agente', name: 'signMsg', type: 'boolean', default: false },
+					{
+						displayName: 'Reabrir Conversa Resolvida',
+						name: 'reopenConversation',
+						type: 'boolean',
+						default: false,
+					},
+					{
+						displayName: 'Conversa Pendente (Não Atribuída)',
+						name: 'conversationPending',
+						type: 'boolean',
+						default: false,
+					},
+					{ displayName: 'Importar Contatos', name: 'importContacts', type: 'boolean', default: false },
+					{ displayName: 'Importar Mensagens', name: 'importMessages', type: 'boolean', default: false },
+					{
+						displayName: 'Limite De Dias Pra Importar Mensagens',
+						name: 'daysLimitImportMessages',
+						type: 'number',
+						default: 60,
+					},
+					{
+						displayName: 'Criar Inbox Automaticamente',
+						name: 'autoCreate',
+						type: 'boolean',
+						default: true,
+					},
+					{ displayName: 'Nome Da Organização', name: 'organization', type: 'string', default: '' },
+					{ displayName: 'URL Do Logo', name: 'logo', type: 'string', default: '' },
+				],
+			},
+
 			// ── Instance fields ──────────────────────────────────────
 			{
 				displayName: 'Webhook URL',
@@ -1339,6 +1597,97 @@ export class EvolutionGo implements INodeType {
 							body.remoteJid = this.getNodeParameter('chatJid', i) as string;
 							body.page = this.getNodeParameter('findPage', i, 1) as number;
 							body.limit = this.getNodeParameter('findLimit', i, 20) as number;
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'profile') {
+					switch (operation) {
+						case 'getProfile':
+							endpoint = '/user/info';
+							body.number = [this.getNodeParameter('profileNumber', i) as string];
+							break;
+						case 'getBusinessProfile':
+							endpoint = '/user/businessProfile';
+							body.number = this.getNodeParameter('profileNumber', i) as string;
+							break;
+						case 'setProfileName':
+							endpoint = '/user/profileName';
+							body.name = this.getNodeParameter('profileName', i) as string;
+							break;
+						case 'setProfileStatus':
+							endpoint = '/user/profileStatus';
+							body.status = this.getNodeParameter('profileStatus', i) as string;
+							break;
+						case 'setProfilePicture':
+							endpoint = '/user/profilePicture';
+							body.image = this.getNodeParameter('profilePictureUrl', i) as string;
+							break;
+						case 'removeProfilePicture':
+							method = 'DELETE';
+							endpoint = '/user/profilePicture';
+							break;
+						case 'getPrivacy':
+							method = 'GET';
+							endpoint = '/user/privacy';
+							break;
+						case 'setPrivacy':
+							endpoint = '/user/privacy';
+							body.groupAdd = this.getNodeParameter('privacyGroupAdd', i) as string;
+							body.lastSeen = this.getNodeParameter('privacyLastSeen', i) as string;
+							body.status = this.getNodeParameter('privacyStatus', i) as string;
+							body.profile = this.getNodeParameter('privacyProfile', i) as string;
+							body.readReceipts = this.getNodeParameter('privacyReadReceipts', i) as string;
+							body.callAdd = this.getNodeParameter('privacyCallAdd', i) as string;
+							body.online = this.getNodeParameter('privacyOnline', i) as string;
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'integration') {
+					const chatwootInstanceId = this.getNodeParameter('instanceId', i, '') as string;
+					if (!chatwootInstanceId) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Selecione uma instância real no campo "Instância" (não deixe no valor padrão da credencial)',
+							{ itemIndex: i },
+						);
+					}
+
+					switch (operation) {
+						case 'getChatwoot':
+							method = 'GET';
+							endpoint = `/instance/chatwoot/${chatwootInstanceId}`;
+							break;
+						case 'setChatwoot': {
+							endpoint = `/instance/chatwoot/${chatwootInstanceId}`;
+							body.enabled = this.getNodeParameter('chatwootEnabled', i, true) as boolean;
+							body.url = this.getNodeParameter('chatwootUrl', i) as string;
+							body.accountId = this.getNodeParameter('chatwootAccountId', i) as string;
+							body.token = this.getNodeParameter('chatwootToken', i) as string;
+							body.nameInbox = this.getNodeParameter('chatwootNameInbox', i, '') as string;
+							const extras = this.getNodeParameter('chatwootAdditionalOptions', i, {}) as IDataObject;
+							body.signMsg = extras.signMsg === true;
+							body.reopenConversation = extras.reopenConversation === true;
+							body.conversationPending = extras.conversationPending === true;
+							body.importContacts = extras.importContacts === true;
+							body.importMessages = extras.importMessages === true;
+							body.daysLimitImportMessages = (extras.daysLimitImportMessages as number) ?? 60;
+							body.autoCreate = extras.autoCreate !== false;
+							if (extras.organization) body.organization = extras.organization;
+							if (extras.logo) body.logo = extras.logo;
+							break;
+						}
+						case 'deleteChatwoot':
+							method = 'DELETE';
+							endpoint = `/instance/chatwoot/${chatwootInstanceId}`;
+							break;
+						case 'resetChatwootStatus':
+							endpoint = `/instance/chatwoot/${chatwootInstanceId}/reset-status`;
 							break;
 						default:
 							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
