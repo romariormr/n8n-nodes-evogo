@@ -92,6 +92,7 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Alterar Nome', value: 'setName', action: 'Alterar nome' },
 					{ name: 'Alterar Descrição', value: 'setDescription', action: 'Alterar descricao' },
 					{ name: 'Alterar Foto', value: 'setPhoto', action: 'Alterar foto' },
+					{ name: 'Atualizar Configurações', value: 'updateSettings', action: 'Atualizar configuracoes' },
 				],
 				default: 'list',
 			},
@@ -133,6 +134,7 @@ export class EvolutionGo implements INodeType {
 						value: 'historySync',
 						action: 'Buscar historico de mensagens',
 					},
+					{ name: 'Procurar Mensagens', value: 'findMessages', action: 'Procurar mensagens' },
 				],
 				default: 'pin',
 			},
@@ -644,9 +646,28 @@ export class EvolutionGo implements INodeType {
 							'setName',
 							'setDescription',
 							'setPhoto',
+							'updateSettings',
 						],
 					},
 				},
+			},
+			{
+				displayName: 'Ação',
+				name: 'groupSettingsAction',
+				type: 'options',
+				noDataExpression: true,
+				options: [
+					{ name: 'Somente Admins Enviam Mensagens', value: 'announcement' },
+					{ name: 'Todos Podem Enviar Mensagens', value: 'not_announcement' },
+					{ name: 'Somente Admins Editam Grupo (Nome/Descrição/Foto)', value: 'locked' },
+					{ name: 'Todos Podem Editar Grupo', value: 'unlocked' },
+					{ name: 'Aprovação De Novos Membros: Ativar', value: 'approval_on' },
+					{ name: 'Aprovação De Novos Membros: Desativar', value: 'approval_off' },
+					{ name: 'Somente Admins Adicionam Membros', value: 'admin_add' },
+					{ name: 'Todos Podem Adicionar Membros', value: 'all_member_add' },
+				],
+				default: 'announcement',
+				displayOptions: { show: { resource: ['group'], operation: ['updateSettings'] } },
 			},
 			{
 				displayName: 'Nome Do Grupo',
@@ -770,9 +791,42 @@ export class EvolutionGo implements INodeType {
 				displayOptions: {
 					show: {
 						resource: ['chat'],
-						operation: ['pin', 'unpin', 'archive', 'unarchive', 'mute', 'unmute', 'historySync'],
+						operation: [
+							'pin',
+							'unpin',
+							'archive',
+							'unarchive',
+							'mute',
+							'unmute',
+							'historySync',
+							'findMessages',
+						],
 					},
 				},
+			},
+			{
+				displayName: 'Página',
+				name: 'findPage',
+				type: 'number',
+				default: 1,
+				description: 'Página da paginação (começa em 1)',
+				displayOptions: { show: { resource: ['chat'], operation: ['findMessages'] } },
+			},
+			{
+				displayName: 'Quantidade Por Página',
+				name: 'findLimit',
+				type: 'number',
+				default: 20,
+				description: 'Máximo 100',
+				displayOptions: { show: { resource: ['chat'], operation: ['findMessages'] } },
+			},
+			{
+				displayName:
+					'Só encontra mensagens RECEBIDAS que já chegaram desde a atualização 0.2.5 do node (mensagens enviadas via API ou de antes dessa versão não são indexadas ainda).',
+				name: 'findMessagesNote',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { resource: ['chat'], operation: ['findMessages'] } },
 			},
 			{
 				displayName: 'ID Da Mensagem De Referência',
@@ -1199,6 +1253,11 @@ export class EvolutionGo implements INodeType {
 							body.groupJid = this.getNodeParameter('groupJid', i) as string;
 							body.url = this.getNodeParameter('photoUrl', i) as string;
 							break;
+						case 'updateSettings':
+							endpoint = '/group/settings';
+							body.groupJid = this.getNodeParameter('groupJid', i) as string;
+							body.action = this.getNodeParameter('groupSettingsAction', i) as string;
+							break;
 						default:
 							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
 								itemIndex: i,
@@ -1265,7 +1324,7 @@ export class EvolutionGo implements INodeType {
 							body.chat = this.getNodeParameter('chatJid', i) as string;
 							break;
 						case 'historySync':
-							endpoint = '/chat/history-sync-request';
+							endpoint = '/chat/history-sync';
 							body.messageInfo = {
 								Chat: this.getNodeParameter('chatJid', i) as string,
 								IsFromMe: this.getNodeParameter('referenceIsFromMe', i, false) as boolean,
@@ -1274,6 +1333,12 @@ export class EvolutionGo implements INodeType {
 								Timestamp: this.getNodeParameter('referenceTimestamp', i) as string,
 							};
 							body.count = this.getNodeParameter('historyCount', i, 50) as number;
+							break;
+						case 'findMessages':
+							endpoint = '/chat/find-messages';
+							body.remoteJid = this.getNodeParameter('chatJid', i) as string;
+							body.page = this.getNodeParameter('findPage', i, 1) as number;
+							body.limit = this.getNodeParameter('findLimit', i, 20) as number;
 							break;
 						default:
 							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
