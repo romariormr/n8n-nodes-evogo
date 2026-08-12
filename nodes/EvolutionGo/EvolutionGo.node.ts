@@ -10,6 +10,54 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
+// @types/node não está instalado neste pacote; setTimeout existe no runtime (Node).
+declare function setTimeout(handler: () => void, timeout: number): unknown;
+
+// Resultado de um envio de foto no lote. Sem token/apikey — nada de segredo aqui.
+interface PhotoResult {
+	jid: string;
+	ok: boolean;
+	status?: number;
+	pictureId?: string;
+	error?: string;
+}
+
+interface HttpErrorish {
+	message?: string;
+	httpCode?: string | number;
+	statusCode?: number;
+	response?: { statusCode?: number; status?: number; body?: unknown; data?: unknown };
+}
+
+const sleep = (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms));
+
+// extractStatus tira o código HTTP de qualquer formato de erro do httpRequest.
+function extractStatus(error: unknown): number | undefined {
+	const e = error as HttpErrorish;
+	const raw =
+		e?.response?.statusCode ??
+		e?.response?.status ??
+		e?.statusCode ??
+		(typeof e?.httpCode === 'number' ? e.httpCode : Number(e?.httpCode));
+	return typeof raw === 'number' && !Number.isNaN(raw) ? raw : undefined;
+}
+
+// extractApiBody devolve o corpo da resposta de erro (parseado se JSON) ou a mensagem.
+// Nunca inclui apikey/token — só o que a API respondeu.
+function extractApiBody(error: unknown): unknown {
+	const e = error as HttpErrorish;
+	let body: unknown = e?.response?.body ?? e?.response?.data;
+	if (typeof body === 'string') {
+		try {
+			body = JSON.parse(body);
+		} catch {
+			/* mantém string crua */
+		}
+	}
+	if (body !== undefined && body !== null && body !== '') return body;
+	return e?.message ? String(e.message).slice(0, 300) : 'erro desconhecido';
+}
+
 export class EvolutionGo implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'Evolution GO',
@@ -94,6 +142,7 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Alterar Nome', value: 'setName', action: 'Alterar nome' },
 					{ name: 'Alterar Descrição', value: 'setDescription', action: 'Alterar descricao' },
 					{ name: 'Alterar Foto', value: 'setPhoto', action: 'Alterar foto' },
+					{ name: 'Alterar Foto (Lote)', value: 'setPhotoBatch', action: 'Alterar foto em lote' },
 					{ name: 'Atualizar Configurações', value: 'updateSettings', action: 'Atualizar configuracoes' },
 				],
 				default: 'list',
@@ -770,16 +819,101 @@ export class EvolutionGo implements INodeType {
 				required: true,
 				displayOptions: { show: { resource: ['group'], operation: ['setDescription'] } },
 			},
+			// ── Group photo (single + batch) ─────────────────────────
+			{
+				displayName: 'Origem Da Foto',
+				name: 'photoSource',
+				type: 'options',
+				options: [
+					{ name: 'Binário (Propriedade Do Item)', value: 'binary' },
+					{ name: 'Data URI (data:image/...)', value: 'dataUri' },
+					{ name: 'URL Externa', value: 'url' },
+				],
+				default: 'binary',
+				description:
+					'De onde vem a imagem. Binário e Data URI evitam depender de uma URL acessível pelo servidor — URLs internas de MinIO costumam ser recusadas.',
+				displayOptions: { show: { resource: ['group'], operation: ['setPhoto', 'setPhotoBatch'] } },
+			},
+			{
+				displayName: 'Propriedade Binária',
+				name: 'photoBinaryProperty',
+				type: 'string',
+				default: 'data',
+				required: true,
+				description: 'Nome da propriedade binária do item que contém a imagem (JPEG ou PNG)',
+				displayOptions: {
+					show: { resource: ['group'], operation: ['setPhoto', 'setPhotoBatch'], photoSource: ['binary'] },
+				},
+			},
+			{
+				displayName: 'Data URI',
+				name: 'photoDataUri',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'data:image/jpeg;base64,/9j/4AAQ...',
+				description: 'Deve começar com data:image/jpeg;base64, ou data:image/png;base64,',
+				displayOptions: {
+					show: { resource: ['group'], operation: ['setPhoto', 'setPhotoBatch'], photoSource: ['dataUri'] },
+				},
+			},
 			{
 				displayName: 'URL Da Foto',
 				name: 'photoUrl',
 				type: 'string',
 				default: '',
 				required: true,
-				displayOptions: { show: { resource: ['group'], operation: ['setPhoto'] } },
+				description: 'A imagem é baixada pelo servidor Evolution — a URL precisa ser acessível por ele',
+				displayOptions: {
+					show: { resource: ['group'], operation: ['setPhoto', 'setPhotoBatch'], photoSource: ['url'] },
+				},
+			},
+			{
+				displayName: 'JIDs Dos Grupos (Um Por Linha)',
+				name: 'batchGroupJids',
+				type: 'string',
+				typeOptions: { rows: 5 },
+				default: '',
+				required: true,
+				placeholder: '120363XXXXXXXXXX@g.us\n120363YYYYYYYYYY@g.us',
+				description: 'Um JID de grupo por linha. A mesma foto é aplicada a todos, um de cada vez.',
+				displayOptions: { show: { resource: ['group'], operation: ['setPhotoBatch'] } },
+			},
+			{
+				displayName: 'Simular (Dry-Run)',
+				name: 'batchDryRun',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to only report which groups would be updated, without changing any photo',
+				displayOptions: { show: { resource: ['group'], operation: ['setPhotoBatch'] } },
+			},
+			{
+				displayName: 'Tentativas Por Grupo',
+				name: 'batchRetries',
+				type: 'number',
+				default: 2,
+				description:
+					'Novas tentativas em falha temporária (5xx, 429 ou rede). Erro de validação (4xx) não é repetido.',
+				displayOptions: { show: { resource: ['group'], operation: ['setPhotoBatch'] } },
+			},
+			{
+				displayName: 'Atraso Entre Grupos (Ms)',
+				name: 'batchDelayMs',
+				type: 'number',
+				default: 1500,
+				description: 'Pausa entre um grupo e o próximo, e entre novas tentativas',
+				displayOptions: { show: { resource: ['group'], operation: ['setPhotoBatch'] } },
 			},
 
 			// ── Channel fields ───────────────────────────────────────
+			{
+				displayName:
+					'Editar nome, descrição ou foto de um canal (@newsletter) não é suportado: a biblioteca WhatsApp usada pelo Evolution GO não expõe essa operação. As ações de canal abaixo (listar, info, inscrever, mensagens, criar) funcionam normalmente.',
+				name: 'channelEditNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { resource: ['channel'] } },
+			},
 			{
 				displayName: 'JID Do Canal',
 				name: 'channelJid',
@@ -1280,6 +1414,203 @@ export class EvolutionGo implements INodeType {
 				const resource = this.getNodeParameter('resource', i) as string;
 				const operation = this.getNodeParameter('operation', i) as string;
 
+				// ── Foto de grupo (single + lote) ────────────────────────
+				// Caminho próprio: precisa ler binário, montar o campo `image`
+				// (URL / data URI / base64 do binário) e, no lote, iterar um grupo
+				// por vez com retry. O backend /group/photo espera { groupJid, image }
+				// — o campo é `image`, não `url` (bug antigo do node), e aceita tanto
+				// URL quanto data:image/jpeg|png;base64,...
+				if (resource === 'group' && (operation === 'setPhoto' || operation === 'setPhotoBatch')) {
+					// Monta o valor do campo `image` a partir da origem escolhida.
+					const buildImage = async (): Promise<{ image: string; warning?: string }> => {
+						const source = this.getNodeParameter('photoSource', i, 'binary') as string;
+
+						if (source === 'url') {
+							const u = (this.getNodeParameter('photoUrl', i, '') as string).trim();
+							if (!u) {
+								throw new NodeOperationError(this.getNode(), 'URL da foto vazia', { itemIndex: i });
+							}
+							return { image: u };
+						}
+
+						if (source === 'dataUri') {
+							const d = (this.getNodeParameter('photoDataUri', i, '') as string).trim();
+							if (!/^data:image\/(jpeg|jpg|png);base64,/i.test(d)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Data URI inválido: deve começar com data:image/jpeg;base64, ou data:image/png;base64,',
+									{ itemIndex: i },
+								);
+							}
+							return { image: d.replace(/^data:image\/jpg;base64,/i, 'data:image/jpeg;base64,') };
+						}
+
+						// binary
+						const prop =
+							(this.getNodeParameter('photoBinaryProperty', i, 'data') as string).trim() || 'data';
+						const meta = this.helpers.assertBinaryData(i, prop);
+						const mime = (meta.mimeType || '').toLowerCase();
+						if (!mime.startsWith('image/')) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`A propriedade binária "${prop}" não é uma imagem (mime: ${mime || 'desconhecido'}).`,
+								{ itemIndex: i },
+							);
+						}
+						let waMime = '';
+						if (mime === 'image/jpeg' || mime === 'image/jpg') waMime = 'image/jpeg';
+						else if (mime === 'image/png') waMime = 'image/png';
+						else {
+							throw new NodeOperationError(
+								this.getNode(),
+								`WhatsApp aceita JPEG ou PNG para foto de grupo; o binário é ${mime}. Converta para JPEG.`,
+								{ itemIndex: i },
+							);
+						}
+						const buf = await this.helpers.getBinaryDataBuffer(i, prop);
+						const maxBytes = 5 * 1024 * 1024;
+						if (buf.length > maxBytes) {
+							throw new NodeOperationError(
+								this.getNode(),
+								`Imagem grande demais (${(buf.length / 1024 / 1024).toFixed(1)} MB). Limite: 5 MB.`,
+								{ itemIndex: i },
+							);
+						}
+						const warning =
+							waMime === 'image/png'
+								? 'PNG aceito, mas JPEG baseline ~512–640px é o formato mais estável no WhatsApp.'
+								: undefined;
+						return { image: `data:${waMime};base64,${buf.toString('base64')}`, warning };
+					};
+
+					// Resolve o token operacional da instância (a chave global lista
+					// instâncias mas /group/photo exige o token da instância).
+					let apikey = credentials.apiKey as string;
+					const instanceId = this.getNodeParameter('instanceId', i, '') as string;
+					if (instanceId) {
+						const token = await resolveInstanceToken(instanceId);
+						if (token) apikey = token;
+					}
+
+					const postPhoto = (jid: string, image: string) =>
+						this.helpers.httpRequest({
+							method: 'POST',
+							url: `${baseUrl}/group/photo`,
+							headers: { apikey },
+							body: { groupJid: jid, image },
+							json: true,
+							skipSslCertificateValidation: skipSsl,
+						});
+
+					const { image, warning } = await buildImage();
+
+					if (operation === 'setPhoto') {
+						const jid = this.getNodeParameter('groupJid', i) as string;
+						try {
+							const resp = (await postPhoto(jid, image)) as IDataObject;
+							const plain = JSON.parse(JSON.stringify(resp ?? {})) as IDataObject;
+							returnData.push({
+								json: {
+									success: true,
+									operation,
+									endpoint: '/group/photo',
+									jid,
+									...(warning ? { warning } : {}),
+									response: plain,
+								},
+								pairedItem: { item: i },
+							});
+						} catch (err) {
+							const detail: IDataObject = {
+								success: false,
+								operation,
+								endpoint: '/group/photo',
+								jid,
+								...(instanceId ? { instance: instanceId } : {}),
+								status: extractStatus(err),
+								apiError: extractApiBody(err) as IDataObject | string,
+							};
+							if (this.continueOnFail()) {
+								returnData.push({ json: detail, pairedItem: { item: i } });
+							} else {
+								throw new NodeOperationError(this.getNode(), 'Falha ao alterar foto do grupo', {
+									itemIndex: i,
+									description: JSON.stringify(detail),
+								});
+							}
+						}
+						continue;
+					}
+
+					// setPhotoBatch
+					const jids = (this.getNodeParameter('batchGroupJids', i, '') as string)
+						.split('\n')
+						.map((s) => s.trim())
+						.filter(Boolean);
+					const dryRun = this.getNodeParameter('batchDryRun', i, false) as boolean;
+					const retries = Math.max(0, this.getNodeParameter('batchRetries', i, 2) as number);
+					const delayMs = Math.max(0, this.getNodeParameter('batchDelayMs', i, 1500) as number);
+
+					const results: PhotoResult[] = [];
+					for (let k = 0; k < jids.length; k++) {
+						const jid = jids[k];
+
+						if (dryRun) {
+							results.push({ jid, ok: true, pictureId: '(dry-run)' });
+							continue;
+						}
+
+						let attempt = 0;
+						for (;;) {
+							try {
+								const resp = (await postPhoto(jid, image)) as IDataObject;
+								const pictureId =
+									(resp?.pictureId as string) ??
+									((resp?.data as IDataObject | undefined)?.pictureId as string) ??
+									undefined;
+								results.push({ jid, ok: true, pictureId });
+								break;
+							} catch (err) {
+								const status = extractStatus(err);
+								const transient = status === undefined || status >= 500 || status === 429;
+								if (transient && attempt < retries) {
+									attempt++;
+									if (delayMs) await sleep(delayMs);
+									continue;
+								}
+								const apiErr = extractApiBody(err);
+								results.push({
+									jid,
+									ok: false,
+									status,
+									error: typeof apiErr === 'string' ? apiErr : JSON.stringify(apiErr),
+								});
+								break;
+							}
+						}
+
+						// Pausa entre grupos (não após o último).
+						if (delayMs && k < jids.length - 1) await sleep(delayMs);
+					}
+
+					const updated = results.filter((r) => r.ok).length;
+					returnData.push({
+						json: {
+							operation,
+							endpoint: '/group/photo',
+							dryRun,
+							...(instanceId ? { instance: instanceId } : {}),
+							...(warning ? { warning } : {}),
+							total: jids.length,
+							updated,
+							failed: jids.length - updated,
+							results,
+						},
+						pairedItem: { item: i },
+					});
+					continue;
+				}
+
 				let method: IHttpRequestMethods = 'POST';
 				let endpoint = '';
 				const body: IDataObject = {};
@@ -1506,11 +1837,9 @@ export class EvolutionGo implements INodeType {
 							body.groupJid = this.getNodeParameter('groupJid', i) as string;
 							body.description = this.getNodeParameter('groupDescription', i) as string;
 							break;
-						case 'setPhoto':
-							endpoint = '/group/photo';
-							body.groupJid = this.getNodeParameter('groupJid', i) as string;
-							body.url = this.getNodeParameter('photoUrl', i) as string;
-							break;
+						// setPhoto e setPhotoBatch são tratados no bloco early no topo do
+						// loop (precisam ler binário, montar data URI e, no lote, iterar
+						// com retry) — não passam por aqui.
 						case 'updateSettings':
 							endpoint = '/group/settings';
 							body.groupJid = this.getNodeParameter('groupJid', i) as string;
