@@ -15,7 +15,7 @@ no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instânci
 
 | Resource | Operações |
 |---|---|
-| **Mensagem** | Texto, Mídia (imagem/vídeo/áudio/documento por URL), Botões (reply/url/call/copy/**pix**), Lista, Carrossel, Enquete, Localização, Contato, Sticker, Reagir, Marcar como lida, Editar, Apagar, Presença (digitando/gravando) |
+| **Mensagem** | Texto, **Link (prévia rica)**, Mídia (imagem/vídeo/áudio/documento por URL), Botões (reply/url/call/copy/**pix**, com **imagem no cabeçalho** — URL / Data URI / Binário), Lista, Carrossel, Enquete, Localização, Contato, Sticker, Reagir, Marcar como lida, Editar, Apagar, Presença (digitando/gravando) |
 | **Grupo** | Listar, Meus grupos, Info, Criar, Link de convite, Entrar via link, Sair, Participantes (add/remove/promote/demote), Nome, Descrição, **Foto** (URL / Data URI / **Binário**), **Foto em Lote** (N grupos, retry, dry-run, resumo), **Atualizar Configurações** (announce/locked/aprovação/quem adiciona) |
 | **Canal** | Listar canais inscritos, Info, Buscar por convite, Inscrever-se, Mensagens do canal, Criar canal. *Editar nome/descrição/foto de canal não é suportado — a lib WhatsApp do Evolution GO não expõe essa operação.* |
 | **Chat** | Fixar, Desfixar, Arquivar, Desarquivar, Silenciar, Dessilenciar, Buscar histórico de mensagens (solicita reenvio ao WhatsApp — async), **Procurar Mensagens** (busca por número, paginado — só mensagens recebidas desde a 0.2.6) |

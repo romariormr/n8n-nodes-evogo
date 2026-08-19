@@ -107,6 +107,7 @@ export class EvolutionGo implements INodeType {
 				options: [
 					{ name: 'Enviar Texto', value: 'sendText', action: 'Enviar texto' },
 					{ name: 'Enviar Mídia (Imagem/Vídeo/Áudio/Documento)', value: 'sendMedia', action: 'Enviar midia' },
+					{ name: 'Enviar Link (Prévia Rica)', value: 'sendLink', action: 'Enviar link' },
 					{ name: 'Enviar Botões', value: 'sendButtons', action: 'Enviar botoes' },
 					{ name: 'Enviar Lista', value: 'sendList', action: 'Enviar lista' },
 					{ name: 'Enviar Carrossel', value: 'sendCarousel', action: 'Enviar carrossel' },
@@ -300,6 +301,7 @@ export class EvolutionGo implements INodeType {
 						operation: [
 							'sendText',
 							'sendMedia',
+							'sendLink',
 							'sendButtons',
 							'sendList',
 							'sendCarousel',
@@ -373,6 +375,54 @@ export class EvolutionGo implements INodeType {
 				type: 'string',
 				default: '',
 				displayOptions: { show: { resource: ['message'], operation: ['sendButtons', 'sendList'] } },
+			},
+			{
+				displayName: 'Imagem Do Cabeçalho',
+				name: 'buttonImageSource',
+				type: 'options',
+				options: [
+					{ name: 'Nenhuma', value: 'none' },
+					{ name: 'Binário (Propriedade Do Item)', value: 'binary' },
+					{ name: 'Data URI (data:image/...)', value: 'dataUri' },
+					{ name: 'URL Externa', value: 'url' },
+				],
+				default: 'none',
+				description:
+					'Foto no topo da mensagem de botões (foto + botões numa mensagem só). Binário/Data URI não dependem de URL acessível pelo servidor. JPEG é o mais estável.',
+				displayOptions: { show: { resource: ['message'], operation: ['sendButtons'] } },
+			},
+			{
+				displayName: 'Propriedade Binária',
+				name: 'buttonImageBinaryProperty',
+				type: 'string',
+				default: 'data',
+				required: true,
+				description: 'Propriedade binária do item com a imagem (JPEG ou PNG)',
+				displayOptions: {
+					show: { resource: ['message'], operation: ['sendButtons'], buttonImageSource: ['binary'] },
+				},
+			},
+			{
+				displayName: 'Imagem (Data URI)',
+				name: 'buttonImageDataUri',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'data:image/jpeg;base64,/9j/4AAQ...',
+				displayOptions: {
+					show: { resource: ['message'], operation: ['sendButtons'], buttonImageSource: ['dataUri'] },
+				},
+			},
+			{
+				displayName: 'Imagem (URL)',
+				name: 'buttonImageUrl',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'A imagem é baixada pelo servidor Evolution — a URL precisa ser acessível por ele',
+				displayOptions: {
+					show: { resource: ['message'], operation: ['sendButtons'], buttonImageSource: ['url'] },
+				},
 			},
 			{
 				displayName: 'Descrição (Corpo)',
@@ -484,6 +534,48 @@ export class EvolutionGo implements INodeType {
 				],
 			},
 
+			// ── sendLink ─────────────────────────────────────────────
+			{
+				displayName: 'Texto Da Mensagem',
+				name: 'linkText',
+				type: 'string',
+				typeOptions: { rows: 3 },
+				default: '',
+				required: true,
+				description: 'Corpo da mensagem. A URL precisa aparecer aqui para a prévia renderizar',
+				displayOptions: { show: { resource: ['message'], operation: ['sendLink'] } },
+			},
+			{
+				displayName: 'URL',
+				name: 'linkUrl',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['message'], operation: ['sendLink'] } },
+			},
+			{
+				displayName: 'Título Da Prévia',
+				name: 'linkTitle',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['message'], operation: ['sendLink'] } },
+			},
+			{
+				displayName: 'Descrição Da Prévia',
+				name: 'linkDescription',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['message'], operation: ['sendLink'] } },
+			},
+			{
+				displayName: 'Imagem Da Prévia (URL)',
+				name: 'linkImgUrl',
+				type: 'string',
+				default: '',
+				description: 'Miniatura mostrada no cartão da prévia',
+				displayOptions: { show: { resource: ['message'], operation: ['sendLink'] } },
+			},
+
 			// ── sendList ─────────────────────────────────────────────
 			{
 				displayName: 'Texto Do Botão Da Lista',
@@ -530,9 +622,10 @@ export class EvolutionGo implements INodeType {
 				name: 'cards',
 				type: 'json',
 				default:
-					'[\n  {\n    "header": {"title": "Card 1", "imageUrl": "https://placehold.co/600x400"},\n    "body": "Texto do card",\n    "buttons": [{"type": "REPLY", "displayText": "Escolher", "id": "card_1"}]\n  },\n  {\n    "header": {"title": "Card 2", "imageUrl": "https://placehold.co/600x400"},\n    "body": "Texto do card 2",\n    "buttons": [{"type": "REPLY", "displayText": "Escolher", "id": "card_2"}]\n  }\n]',
+					'[\n  {\n    "header": {"title": "Card 1", "imageUrl": "https://placehold.co/600x400"},\n    "body": {"text": "Texto do card"},\n    "buttons": [{"type": "REPLY", "displayText": "Escolher", "id": "card_1"}]\n  },\n  {\n    "header": {"title": "Card 2", "imageUrl": "https://placehold.co/600x400"},\n    "body": {"text": "Texto do card 2"},\n    "buttons": [{"type": "REPLY", "displayText": "Escolher", "id": "card_2"}]\n  }\n]',
 				required: true,
-				description: 'Mínimo 2 cards, todos com imageUrl. Tipos de botão: REPLY, URL, CALL, COPY.',
+				description:
+					'Mínimo 2 cards, todos com imageUrl. O "body" do card é objeto {"text": "..."}, não string — string derruba o bind da API com 400. Tipos de botão: REPLY, URL, CALL, COPY.',
 				displayOptions: { show: { resource: ['message'], operation: ['sendCarousel'] } },
 			},
 
@@ -682,6 +775,7 @@ export class EvolutionGo implements INodeType {
 						operation: [
 							'sendText',
 							'sendMedia',
+							'sendLink',
 							'sendButtons',
 							'sendList',
 							'sendCarousel',
@@ -1647,6 +1741,23 @@ export class EvolutionGo implements INodeType {
 							addExtras();
 							break;
 
+						case 'sendLink': {
+							// /send/link ja existia na API (LinkStruct) e nao estava exposto aqui.
+							// Serve para canal (@newsletter), onde botao e carrossel nao renderizam:
+							// entrega titulo, descricao e miniatura clicaveis sem URL crua no texto.
+							endpoint = '/send/link';
+							body.text = this.getNodeParameter('linkText', i) as string;
+							body.url = this.getNodeParameter('linkUrl', i) as string;
+							const lTitle = this.getNodeParameter('linkTitle', i, '') as string;
+							const lDesc = this.getNodeParameter('linkDescription', i, '') as string;
+							const lImg = this.getNodeParameter('linkImgUrl', i, '') as string;
+							if (lTitle) body.title = lTitle;
+							if (lDesc) body.description = lDesc;
+							if (lImg) body.imgUrl = lImg;
+							addExtras();
+							break;
+						}
+
 						case 'sendMedia':
 							endpoint = '/send/media';
 							body.type = this.getNodeParameter('mediaType', i) as string;
@@ -1686,7 +1797,32 @@ export class EvolutionGo implements INodeType {
 									key: b.pixKey,
 								};
 							});
-							addExtras();
+														// Imagem opcional no cabecalho (foto + botoes numa mensagem so).
+							// O backend /send/button aceita image = URL http(s) ou data URI.
+							const imgSource = this.getNodeParameter('buttonImageSource', i, 'none') as string;
+							if (imgSource === 'url') {
+								const u = (this.getNodeParameter('buttonImageUrl', i, '') as string).trim();
+								if (u) body.image = u;
+							} else if (imgSource === 'dataUri') {
+								const d = (this.getNodeParameter('buttonImageDataUri', i, '') as string).trim();
+								if (!/^data:image\/(jpeg|jpg|png);base64,/i.test(d)) {
+									throw new NodeOperationError(this.getNode(), 'Data URI invalido: use data:image/jpeg;base64,... (ou png)', { itemIndex: i });
+								}
+								body.image = d.replace(/^data:image\/jpg;base64,/i, 'data:image/jpeg;base64,');
+							} else if (imgSource === 'binary') {
+								const prop = (this.getNodeParameter('buttonImageBinaryProperty', i, 'data') as string).trim() || 'data';
+								const meta = this.helpers.assertBinaryData(i, prop);
+								const mime = (meta.mimeType || '').toLowerCase();
+								let waMime = '';
+								if (mime === 'image/jpeg' || mime === 'image/jpg') waMime = 'image/jpeg';
+								else if (mime === 'image/png') waMime = 'image/png';
+								else throw new NodeOperationError(this.getNode(), `Cabecalho aceita JPEG ou PNG; o binario e ${mime || 'desconhecido'}.`, { itemIndex: i });
+								const buf = await this.helpers.getBinaryDataBuffer(i, prop);
+								if (buf.length > 5 * 1024 * 1024) throw new NodeOperationError(this.getNode(), `Imagem grande demais (${(buf.length / 1024 / 1024).toFixed(1)} MB). Limite 5 MB.`, { itemIndex: i });
+								body.image = `data:${waMime};base64,${buf.toString('base64')}`;
+							}
+
+addExtras();
 							break;
 						}
 
@@ -1716,12 +1852,15 @@ export class EvolutionGo implements INodeType {
 
 						case 'sendPoll': {
 							endpoint = '/send/poll';
-							body.name = this.getNodeParameter('pollName', i) as string;
+							// A API le PollStruct{Question `json:"question"`, MaxAnswer `json:"maxAnswer"`}.
+							// Enviavamos name/selectableCount, entao Question chegava vazia e o handler
+							// respondia 400 "question is required" -- em toda enquete, sempre.
+							body.question = this.getNodeParameter('pollName', i) as string;
 							body.options = (this.getNodeParameter('pollOptions', i) as string)
 								.split('\n')
 								.map((o) => o.trim())
 								.filter(Boolean);
-							body.selectableCount = this.getNodeParameter('selectableCount', i, 1) as number;
+							body.maxAnswer = this.getNodeParameter('selectableCount', i, 1) as number;
 							addExtras();
 							break;
 						}
