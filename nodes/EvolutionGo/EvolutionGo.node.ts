@@ -87,6 +87,7 @@ export class EvolutionGo implements INodeType {
 				noDataExpression: true,
 				options: [
 					{ name: 'Mensagem', value: 'message' },
+					{ name: 'Status (Stories)', value: 'status' },
 					{ name: 'Grupo', value: 'group' },
 					{ name: 'Canal', value: 'channel' },
 					{ name: 'Chat', value: 'chat' },
@@ -122,6 +123,103 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Presença (Digitando/Gravando)', value: 'presence', action: 'Enviar presenca' },
 				],
 				default: 'sendText',
+			},
+
+			// ── Operations: Status ───────────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['status'] } },
+				options: [
+					{ name: 'Status De Texto', value: 'statusText', action: 'Status de texto' },
+					{ name: 'Status De Mídia (Imagem/Vídeo)', value: 'statusMedia', action: 'Status de midia' },
+				],
+				default: 'statusMedia',
+			},
+			{
+				displayName:
+					'Status publica pros CONTATOS da instância (quem tem o número salvo), sujeito à privacidade de status — não é canal. O link vai na legenda como texto, mas NÃO fica clicável no status (limitação do WhatsApp).',
+				name: 'statusNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { resource: ['status'] } },
+			},
+			{
+				displayName: 'Texto',
+				name: 'statusText',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['status'], operation: ['statusText'] } },
+			},
+			{
+				displayName: 'Tipo',
+				name: 'statusMediaType',
+				type: 'options',
+				options: [
+					{ name: 'Imagem', value: 'image' },
+					{ name: 'Vídeo', value: 'video' },
+				],
+				default: 'image',
+				displayOptions: { show: { resource: ['status'], operation: ['statusMedia'] } },
+			},
+			{
+				displayName: 'Origem Da Mídia',
+				name: 'statusMediaSource',
+				type: 'options',
+				options: [
+					{ name: 'Binário (Propriedade Do Item)', value: 'binary' },
+					{ name: 'Data URI (data:image/...)', value: 'dataUri' },
+					{ name: 'URL Externa', value: 'url' },
+				],
+				default: 'binary',
+				description:
+					'De onde vem a mídia. Binário/Data URI não dependem de URL acessível pelo servidor (MinIO interno costuma ser recusado).',
+				displayOptions: { show: { resource: ['status'], operation: ['statusMedia'] } },
+			},
+			{
+				displayName: 'Propriedade Binária',
+				name: 'statusBinaryProperty',
+				type: 'string',
+				default: 'data',
+				required: true,
+				displayOptions: {
+					show: { resource: ['status'], operation: ['statusMedia'], statusMediaSource: ['binary'] },
+				},
+			},
+			{
+				displayName: 'Data URI',
+				name: 'statusDataUri',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'data:image/jpeg;base64,...',
+				displayOptions: {
+					show: { resource: ['status'], operation: ['statusMedia'], statusMediaSource: ['dataUri'] },
+				},
+			},
+			{
+				displayName: 'URL Da Mídia',
+				name: 'statusMediaUrl',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'A mídia é baixada pelo servidor Evolution — a URL precisa ser acessível por ele',
+				displayOptions: {
+					show: { resource: ['status'], operation: ['statusMedia'], statusMediaSource: ['url'] },
+				},
+			},
+			{
+				displayName: 'Legenda',
+				name: 'statusCaption',
+				type: 'string',
+				typeOptions: { rows: 3 },
+				default: '',
+				description: 'Texto + link (o link fica como texto, não clicável no status)',
+				displayOptions: { show: { resource: ['status'], operation: ['statusMedia'] } },
 			},
 
 			// ── Operations: Group ────────────────────────────────────
@@ -253,7 +351,7 @@ export class EvolutionGo implements INodeType {
 				description:
 					'Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
-					show: { resource: ['message', 'group', 'channel', 'chat', 'profile'] },
+					show: { resource: ['message', 'status', 'group', 'channel', 'chat', 'profile'] },
 				},
 			},
 			{
@@ -2070,6 +2168,58 @@ addExtras();
 							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
 								itemIndex: i,
 							});
+					}
+				} else if (resource === 'status') {
+					if (operation === 'statusText') {
+						endpoint = '/send/status/text';
+						body.text = this.getNodeParameter('statusText', i) as string;
+					} else if (operation === 'statusMedia') {
+						endpoint = '/send/status/media';
+						body.type = this.getNodeParameter('statusMediaType', i, 'image') as string;
+						const caption = this.getNodeParameter('statusCaption', i, '') as string;
+						if (caption) body.caption = caption;
+
+						// O backend /send/status/media aceita url http(s) OU data URI no
+						// campo `url`. Binário do item é convertido em data URI.
+						const src = this.getNodeParameter('statusMediaSource', i, 'binary') as string;
+						if (src === 'url') {
+							body.url = (this.getNodeParameter('statusMediaUrl', i, '') as string).trim();
+						} else if (src === 'dataUri') {
+							const d = (this.getNodeParameter('statusDataUri', i, '') as string).trim();
+							if (!/^data:(image|video)\//i.test(d)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Data URI inválido: use data:image/...;base64,... ou data:video/...',
+									{ itemIndex: i },
+								);
+							}
+							body.url = d;
+						} else {
+							const prop =
+								(this.getNodeParameter('statusBinaryProperty', i, 'data') as string).trim() || 'data';
+							const meta = this.helpers.assertBinaryData(i, prop);
+							const mime = (meta.mimeType || '').toLowerCase();
+							if (!mime.startsWith('image/') && !mime.startsWith('video/')) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`A propriedade binária "${prop}" não é imagem nem vídeo (mime: ${mime || 'desconhecido'}).`,
+									{ itemIndex: i },
+								);
+							}
+							const buf = await this.helpers.getBinaryDataBuffer(i, prop);
+							if (buf.length > 16 * 1024 * 1024) {
+								throw new NodeOperationError(
+									this.getNode(),
+									`Mídia grande demais (${(buf.length / 1024 / 1024).toFixed(1)} MB). Limite 16 MB.`,
+									{ itemIndex: i },
+								);
+							}
+							body.url = `data:${mime};base64,${buf.toString('base64')}`;
+						}
+					} else {
+						throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+							itemIndex: i,
+						});
 					}
 				} else if (resource === 'profile') {
 					switch (operation) {
