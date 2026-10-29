@@ -66,7 +66,7 @@ export class EvolutionGo implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-		description: 'Envia mensagens WhatsApp via Evolution GO (texto, mídia, botões, listas, carrossel, grupos, canais)',
+		description: 'WhatsApp via Evolution GO: mensagens (texto, mídia, álbum, botões, listas, carrossel), grupos, comunidades, canais, contatos, histórico e agendamentos',
 		defaults: {
 			name: 'Evolution GO',
 		},
@@ -89,8 +89,12 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Mensagem', value: 'message' },
 					{ name: 'Status (Stories)', value: 'status' },
 					{ name: 'Grupo', value: 'group' },
+					{ name: 'Comunidade', value: 'community' },
 					{ name: 'Canal', value: 'channel' },
 					{ name: 'Chat', value: 'chat' },
+					{ name: 'Contato', value: 'contact' },
+					{ name: 'Histórico', value: 'history' },
+					{ name: 'Agendamento', value: 'schedule' },
 					{ name: 'Perfil', value: 'profile' },
 					{ name: 'Integração', value: 'integration' },
 					{ name: 'Instância', value: 'instance' },
@@ -108,6 +112,7 @@ export class EvolutionGo implements INodeType {
 				options: [
 					{ name: 'Enviar Texto', value: 'sendText', action: 'Enviar texto' },
 					{ name: 'Enviar Mídia (Imagem/Vídeo/Áudio/Documento)', value: 'sendMedia', action: 'Enviar midia' },
+					{ name: 'Enviar Álbum (Várias Fotos/Vídeos)', value: 'sendAlbum', action: 'Enviar album' },
 					{ name: 'Enviar Link (Prévia Rica)', value: 'sendLink', action: 'Enviar link' },
 					{ name: 'Enviar Botões', value: 'sendButtons', action: 'Enviar botoes' },
 					{ name: 'Enviar Lista', value: 'sendList', action: 'Enviar lista' },
@@ -339,6 +344,337 @@ export class EvolutionGo implements INodeType {
 				default: 'listAll',
 			},
 
+			// ── Operations: Comunidade ──────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['community'] } },
+				options: [
+					{ name: 'Listar Comunidades', value: 'list', action: 'Listar comunidades' },
+					{ name: 'Informações Da Comunidade', value: 'info', action: 'Informacoes da comunidade' },
+					{ name: 'Participantes Da Comunidade', value: 'participants', action: 'Participantes da comunidade' },
+					{ name: 'Enviar Aviso', value: 'announce', action: 'Enviar aviso na comunidade' },
+					{ name: 'Criar Comunidade', value: 'create', action: 'Criar comunidade' },
+					{ name: 'Vincular Grupos', value: 'link', action: 'Vincular grupos a comunidade' },
+					{ name: 'Desvincular Grupos', value: 'unlink', action: 'Desvincular grupos da comunidade' },
+				],
+				default: 'list',
+			},
+			{
+				displayName: 'Comunidade (JID)',
+				name: 'communityJid',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: '120363000000000000@g.us',
+				description: 'JID da comunidade (rode "Listar Comunidades" para ver). Aceita só o número.',
+				displayOptions: {
+					show: { resource: ['community'], operation: ['info', 'participants', 'announce', 'link', 'unlink'] },
+				},
+			},
+			{
+				displayName: 'Nome Da Comunidade',
+				name: 'communityName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['community'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Grupos (JIDs)',
+				name: 'communityGroups',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				required: true,
+				placeholder: '120363111111111111@g.us\n120363222222222222@g.us',
+				description: 'Um JID de grupo por linha',
+				displayOptions: { show: { resource: ['community'], operation: ['link', 'unlink'] } },
+			},
+			{
+				displayName: 'Texto Do Aviso',
+				name: 'announcementText',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				required: true,
+				description: 'Enviado no grupo de avisos da comunidade (só admins da comunidade conseguem)',
+				displayOptions: { show: { resource: ['community'], operation: ['announce'] } },
+			},
+
+			// ── Operations: Histórico ───────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['history'] } },
+				options: [
+					{ name: 'Buscar Mensagens', value: 'search', action: 'Buscar mensagens no historico' },
+					{ name: 'Listar Conversas', value: 'chats', action: 'Listar conversas do historico' },
+					{ name: 'Buscar Mensagem Por ID', value: 'get', action: 'Buscar mensagem por id' },
+				],
+				default: 'search',
+			},
+			{
+				displayName: 'Conversa',
+				name: 'historyChat',
+				type: 'string',
+				default: '',
+				placeholder: '5585999999999 ou 120363...@g.us',
+				description: 'Filtra uma conversa (número ou JID). Vazio = todas.',
+				displayOptions: { show: { resource: ['history'], operation: ['search'] } },
+			},
+			{
+				displayName: 'Texto',
+				name: 'historyQuery',
+				type: 'string',
+				default: '',
+				description: 'Busca no texto/legenda (full-text em português: "pedido" também acha "pedidos")',
+				displayOptions: { show: { resource: ['history'], operation: ['search'] } },
+			},
+			{
+				displayName: 'Filtros',
+				name: 'historyFilters',
+				type: 'collection',
+				placeholder: 'Adicionar filtro',
+				default: {},
+				displayOptions: { show: { resource: ['history'], operation: ['search'] } },
+				options: [
+					{
+						displayName: 'Direção',
+						name: 'fromMe',
+						type: 'options',
+						options: [
+							{ name: 'Todas', value: '' },
+							{ name: 'Enviadas', value: 'true' },
+							{ name: 'Recebidas', value: 'false' },
+						],
+						default: '',
+					},
+					{
+						displayName: 'Tipo',
+						name: 'type',
+						type: 'options',
+						options: [
+							{ name: 'Todos', value: '' },
+							{ name: 'Texto', value: 'text' },
+							{ name: 'Imagem', value: 'image' },
+							{ name: 'Vídeo', value: 'video' },
+							{ name: 'Áudio', value: 'audio' },
+							{ name: 'Documento', value: 'document' },
+							{ name: 'Localização', value: 'location' },
+							{ name: 'Contato', value: 'contact' },
+							{ name: 'Enquete', value: 'poll' },
+						],
+						default: '',
+					},
+					{ displayName: 'Depois De', name: 'after', type: 'dateTime', default: '' },
+					{ displayName: 'Antes De', name: 'before', type: 'dateTime', default: '' },
+					{
+						displayName: 'Limite',
+						name: 'limit',
+						type: 'number',
+						typeOptions: { minValue: 1, maxValue: 500 },
+						default: 100,
+					},
+				],
+			},
+			{
+				displayName: 'ID Da Mensagem',
+				name: 'historyMessageId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['history'], operation: ['get'] } },
+			},
+
+			// ── Operations: Agendamento ─────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['schedule'] } },
+				options: [
+					{ name: 'Agendar Texto', value: 'create', action: 'Agendar mensagem de texto' },
+					{ name: 'Listar Agendamentos', value: 'list', action: 'Listar agendamentos' },
+					{ name: 'Pausar', value: 'pause', action: 'Pausar agendamento' },
+					{ name: 'Retomar', value: 'resume', action: 'Retomar agendamento' },
+					{ name: 'Apagar', value: 'delete', action: 'Apagar agendamento' },
+				],
+				default: 'create',
+			},
+			{
+				displayName: 'Número',
+				name: 'scheduleNumber',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: '5585999999999 ou 120363...@g.us',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Texto',
+				name: 'scheduleText',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Quando',
+				name: 'scheduleMode',
+				type: 'options',
+				options: [
+					{ name: 'Uma Vez (Data E Hora)', value: 'once' },
+					{ name: 'Recorrente (Cron)', value: 'cron' },
+				],
+				default: 'once',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Data E Hora',
+				name: 'scheduleSendAt',
+				type: 'dateTime',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleMode: ['once'] } },
+			},
+			{
+				displayName: 'Cron',
+				name: 'scheduleCron',
+				type: 'string',
+				default: '0 9 * * 1-5',
+				required: true,
+				description: '5 campos: minuto hora dia mês dia-da-semana. Ex.: "0 9 * * 1-5" = dias úteis às 09:00.',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleMode: ['cron'] } },
+			},
+			{
+				displayName: 'Opções',
+				name: 'scheduleOptions',
+				type: 'collection',
+				placeholder: 'Adicionar opção',
+				default: {},
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'] } },
+				options: [
+					{ displayName: 'Fuso Horário', name: 'timezone', type: 'string', default: 'America/Sao_Paulo' },
+					{ displayName: 'Descrição', name: 'description', type: 'string', default: '' },
+				],
+			},
+			{
+				displayName: 'ID Do Agendamento',
+				name: 'scheduleId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['schedule'], operation: ['pause', 'resume', 'delete'] } },
+			},
+			{
+				displayName: 'Status',
+				name: 'scheduleStatus',
+				type: 'options',
+				options: [
+					{ name: 'Todos', value: '' },
+					{ name: 'Agendados', value: 'scheduled' },
+					{ name: 'Pausados', value: 'paused' },
+					{ name: 'Enviados', value: 'sent' },
+					{ name: 'Com Falha', value: 'failed' },
+				],
+				default: '',
+				displayOptions: { show: { resource: ['schedule'], operation: ['list'] } },
+			},
+
+			// ── Operations: Contato ─────────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['contact'] } },
+				options: [
+					{ name: 'Verificar Números No WhatsApp', value: 'check', action: 'Verificar numeros no whatsapp' },
+					{ name: 'Foto Do Contato', value: 'avatar', action: 'Buscar foto do contato' },
+					{ name: 'Listar Contatos', value: 'list', action: 'Listar contatos' },
+					{ name: 'Bloquear', value: 'block', action: 'Bloquear contato' },
+					{ name: 'Desbloquear', value: 'unblock', action: 'Desbloquear contato' },
+					{ name: 'Listar Bloqueados', value: 'blocklist', action: 'Listar contatos bloqueados' },
+				],
+				default: 'check',
+			},
+			{
+				displayName: 'Números',
+				name: 'contactNumbers',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				required: true,
+				placeholder: '5585999999999\n5585988888888',
+				description: 'Um número por linha (DDI+DDD+número)',
+				displayOptions: { show: { resource: ['contact'], operation: ['check'] } },
+			},
+			{
+				displayName: 'Número',
+				name: 'contactNumber',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: '5585999999999',
+				displayOptions: { show: { resource: ['contact'], operation: ['avatar', 'block', 'unblock'] } },
+			},
+
+			// ── Mensagem: Álbum ─────────────────────────────────────
+			{
+				displayName: 'Itens Do Álbum',
+				name: 'albumItems',
+				type: 'fixedCollection',
+				typeOptions: { multipleValues: true },
+				default: {},
+				required: true,
+				description: 'De 2 a 30 imagens/vídeos. URL http(s) ou data URI (data:image/jpeg;base64,...).',
+				displayOptions: { show: { resource: ['message'], operation: ['sendAlbum'] } },
+				options: [
+					{
+						name: 'item',
+						displayName: 'Item',
+						values: [
+							{ displayName: 'URL', name: 'url', type: 'string', default: '', required: true },
+							{
+								displayName: 'Tipo',
+								name: 'type',
+								type: 'options',
+								options: [
+									{ name: 'Imagem', value: 'image' },
+									{ name: 'Vídeo (MP4)', value: 'video' },
+								],
+								default: 'image',
+							},
+							{ displayName: 'Legenda', name: 'caption', type: 'string', default: '' },
+						],
+					},
+				],
+			},
+			{
+				displayName: 'Legenda Do Álbum',
+				name: 'albumCaption',
+				type: 'string',
+				default: '',
+				description: 'Vai na primeira mídia, se ela não tiver legenda própria',
+				displayOptions: { show: { resource: ['message'], operation: ['sendAlbum'] } },
+			},
+			{
+				displayName: 'Formato Native Flow',
+				name: 'listNativeFlow',
+				type: 'boolean',
+				default: false,
+				description:
+					'Whether to send the list as the modern "native flow" drawer (single_select) instead of the legacy list message. Teste no seu WhatsApp: em alguns aparelhos o formato antigo não aparece.',
+				displayOptions: { show: { resource: ['message'], operation: ['sendList'] } },
+			},
+
 			// ── Instância (dropdown) ─────────────────────────────────
 			{
 				displayName: 'Instância',
@@ -351,7 +687,9 @@ export class EvolutionGo implements INodeType {
 				description:
 					'Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
-					show: { resource: ['message', 'status', 'group', 'channel', 'chat', 'profile'] },
+					show: {
+						resource: ['message', 'status', 'group', 'community', 'channel', 'chat', 'contact', 'profile', 'history', 'schedule'],
+					},
 				},
 			},
 			{
@@ -1829,6 +2167,44 @@ export class EvolutionGo implements INodeType {
 					return raw;
 				};
 
+				// Chave da instância usada na requisição (dropdown > credencial).
+				const instanceApiKey = async (): Promise<string> => {
+					const sel = this.getNodeParameter('instanceId', i, '') as string;
+					if (sel) {
+						const token = await resolveInstanceToken(sel);
+						if (token) return token;
+					}
+					return credentials.apiKey as string;
+				};
+				// ID da instância para rotas /instance/<recurso>/:instanceId. Usa o
+				// dropdown; no valor padrão descobre pelo /instance/status da chave.
+				const instanceIdForPath = async (): Promise<string> => {
+					const sel = this.getNodeParameter('instanceId', i, '') as string;
+					if (sel) {
+						await resolveInstanceToken(sel);
+						const found = (instancesCache ?? []).find(
+							(inst) => inst.id === sel || inst.name === sel || inst.token === sel,
+						);
+						if (found?.id) return found.id as string;
+					}
+					const st = (await this.helpers.httpRequest({
+						method: 'GET',
+						url: `${baseUrl}/instance/status`,
+						headers: { apikey: await instanceApiKey() },
+						json: true,
+						skipSslCertificateValidation: skipSsl,
+					})) as IDataObject;
+					const id = ((st?.data as IDataObject)?.instanceId as string) || '';
+					if (!id) {
+						throw new NodeOperationError(
+							this.getNode(),
+							'Não consegui descobrir o ID da instância. Escolha a instância no campo "Instância".',
+							{ itemIndex: i },
+						);
+					}
+					return id;
+				};
+
 				if (resource === 'message') {
 					body.number = this.getNodeParameter('number', i) as string;
 
@@ -1852,6 +2228,26 @@ export class EvolutionGo implements INodeType {
 							if (lTitle) body.title = lTitle;
 							if (lDesc) body.description = lDesc;
 							if (lImg) body.imgUrl = lImg;
+							addExtras();
+							break;
+						}
+
+						case 'sendAlbum': {
+							endpoint = '/send/album';
+							const coll = this.getNodeParameter('albumItems', i, {}) as IDataObject;
+							const albumItems = ((coll.item as IDataObject[]) ?? []).map((it) => ({
+								url: it.url,
+								type: it.type || 'image',
+								...(it.caption ? { caption: it.caption } : {}),
+							}));
+							if (albumItems.length < 2) {
+								throw new NodeOperationError(this.getNode(), 'O álbum precisa de pelo menos 2 itens', {
+									itemIndex: i,
+								});
+							}
+							body.items = albumItems;
+							const albumCaption = this.getNodeParameter('albumCaption', i, '') as string;
+							if (albumCaption) body.caption = albumCaption;
 							addExtras();
 							break;
 						}
@@ -1933,6 +2329,7 @@ addExtras();
 							body.description = this.getNodeParameter('description', i) as string;
 							body.buttonText = this.getNodeParameter('buttonText', i, 'Ver Menu') as string;
 							body.sections = parseJsonParam('sections') as IDataObject[];
+							if (this.getNodeParameter('listNativeFlow', i, false) as boolean) body.nativeFlow = true;
 							addExtras();
 							break;
 						}
@@ -2306,6 +2703,176 @@ addExtras();
 							break;
 						case 'resetChatwootStatus':
 							endpoint = `/instance/chatwoot/${chatwootInstanceId}/reset-status`;
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'community') {
+					const communityJid = () => this.getNodeParameter('communityJid', i) as string;
+					const groupList = () =>
+						(this.getNodeParameter('communityGroups', i) as string)
+							.split(/[\n,;]/)
+							.map((g) => g.trim())
+							.filter(Boolean);
+					switch (operation) {
+						case 'list':
+							method = 'GET';
+							endpoint = '/community/list';
+							break;
+						case 'info':
+							endpoint = '/community/info';
+							body.communityJid = communityJid();
+							break;
+						case 'participants':
+							endpoint = '/community/participants';
+							body.communityJid = communityJid();
+							break;
+						case 'announce': {
+							// Descobre o grupo de avisos da comunidade e manda o texto lá.
+							const info = (await this.helpers.httpRequest({
+								method: 'POST',
+								url: `${baseUrl}/community/info`,
+								headers: { apikey: await instanceApiKey() },
+								body: { communityJid: communityJid() },
+								json: true,
+								skipSslCertificateValidation: skipSsl,
+							})) as IDataObject;
+							const announcementJid = (info?.data as IDataObject)?.announcementJid as string;
+							if (!announcementJid) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Essa comunidade não tem grupo de avisos visível para esta instância',
+									{ itemIndex: i },
+								);
+							}
+							endpoint = '/send/text';
+							body.number = announcementJid;
+							body.text = this.getNodeParameter('announcementText', i) as string;
+							break;
+						}
+						case 'create':
+							endpoint = '/community/create';
+							body.communityName = this.getNodeParameter('communityName', i) as string;
+							break;
+						case 'link':
+							endpoint = '/community/add';
+							body.communityJid = communityJid();
+							body.groupJid = groupList();
+							break;
+						case 'unlink':
+							endpoint = '/community/remove';
+							body.communityJid = communityJid();
+							body.groupJid = groupList();
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'history') {
+					const instId = await instanceIdForPath();
+					switch (operation) {
+						case 'search': {
+							method = 'GET';
+							const f = this.getNodeParameter('historyFilters', i, {}) as IDataObject;
+							const qs: string[] = [];
+							const add = (k: string, v: unknown) => qs.push(`${k}=${encodeURIComponent(String(v))}`);
+							const chat = this.getNodeParameter('historyChat', i, '') as string;
+							const q = this.getNodeParameter('historyQuery', i, '') as string;
+							if (chat) add('chat', chat);
+							if (q) add('q', q);
+							if (f.fromMe) add('fromMe', f.fromMe);
+							if (f.type) add('type', f.type);
+							if (f.after) add('after', new Date(String(f.after)).toISOString());
+							if (f.before) add('before', new Date(String(f.before)).toISOString());
+							add('limit', f.limit ?? 100);
+							endpoint = `/instance/history/${instId}?${qs.join('&')}`;
+							break;
+						}
+						case 'chats':
+							method = 'GET';
+							endpoint = `/instance/history/${instId}/chats`;
+							break;
+						case 'get':
+							method = 'GET';
+							endpoint = `/instance/history/${instId}/message/${encodeURIComponent(
+								this.getNodeParameter('historyMessageId', i) as string,
+							)}`;
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'schedule') {
+					const instId = await instanceIdForPath();
+					switch (operation) {
+						case 'create': {
+							endpoint = `/instance/schedule/${instId}`;
+							const opts = this.getNodeParameter('scheduleOptions', i, {}) as IDataObject;
+							body.type = 'text';
+							body.payload = {
+								number: this.getNodeParameter('scheduleNumber', i) as string,
+								text: this.getNodeParameter('scheduleText', i) as string,
+							};
+							if (opts.timezone) body.timezone = opts.timezone;
+							if (opts.description) body.description = opts.description;
+							if ((this.getNodeParameter('scheduleMode', i) as string) === 'cron') {
+								body.cron = this.getNodeParameter('scheduleCron', i) as string;
+							} else {
+								body.sendAt = new Date(this.getNodeParameter('scheduleSendAt', i) as string).toISOString();
+							}
+							break;
+						}
+						case 'list': {
+							method = 'GET';
+							const st = this.getNodeParameter('scheduleStatus', i, '') as string;
+							endpoint = `/instance/schedule/${instId}${st ? `?status=${st}` : ''}`;
+							break;
+						}
+						case 'pause':
+						case 'resume':
+							endpoint = `/instance/schedule/${instId}/${this.getNodeParameter('scheduleId', i) as string}/${operation}`;
+							break;
+						case 'delete':
+							method = 'DELETE';
+							endpoint = `/instance/schedule/${instId}/${this.getNodeParameter('scheduleId', i) as string}`;
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'contact') {
+					switch (operation) {
+						case 'check':
+							endpoint = '/user/check';
+							body.number = (this.getNodeParameter('contactNumbers', i) as string)
+								.split(/[\n,;]/)
+								.map((n) => n.trim())
+								.filter(Boolean);
+							break;
+						case 'avatar':
+							endpoint = '/user/avatar';
+							body.number = this.getNodeParameter('contactNumber', i) as string;
+							break;
+						case 'list':
+							method = 'GET';
+							endpoint = '/user/contacts';
+							break;
+						case 'block':
+							endpoint = '/user/block';
+							body.number = this.getNodeParameter('contactNumber', i) as string;
+							break;
+						case 'unblock':
+							endpoint = '/user/unblock';
+							body.number = this.getNodeParameter('contactNumber', i) as string;
+							break;
+						case 'blocklist':
+							method = 'GET';
+							endpoint = '/user/blocklist';
 							break;
 						default:
 							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {

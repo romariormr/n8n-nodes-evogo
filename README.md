@@ -15,14 +15,22 @@ no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instânci
 
 | Resource | Operações |
 |---|---|
-| **Mensagem** | Texto, **Link (prévia rica)**, Mídia (imagem/vídeo/áudio/documento por URL), Botões (reply/url/call/copy/**pix**, com **imagem no cabeçalho** — URL / Data URI / Binário), Lista, Carrossel, Enquete, Localização, Contato, Sticker, Reagir, Marcar como lida, Editar, Apagar, Presença (digitando/gravando) |
+| **Mensagem** | Texto, **Link (prévia rica)**, Mídia (imagem/vídeo/áudio/documento por URL), **Álbum** (2 a 30 fotos/vídeos numa bolha), Botões (reply/url/call/copy/**pix**, com **imagem no cabeçalho** — URL / Data URI / Binário), Lista (opção **native flow** — gaveta dos clientes atuais), Carrossel, Enquete, Localização, Contato, Sticker, Reagir, Marcar como lida, Editar, Apagar, Presença (digitando/gravando) |
 | **Status (Stories)** | Status de texto; Status de mídia (imagem/vídeo — URL / Data URI / Binário) com legenda. *Publica pros contatos da instância; link na legenda não é clicável (limitação do WhatsApp).* |
 | **Grupo** | Listar, Meus grupos, Info, Criar, Link de convite, Entrar via link, Sair, Participantes (add/remove/promote/demote), Nome, Descrição, **Foto** (URL / Data URI / **Binário**), **Foto em Lote** (N grupos, retry, dry-run, resumo), **Atualizar Configurações** (announce/locked/aprovação/quem adiciona) |
+| **Comunidade** | Listar comunidades, Informações (grupos vinculados + grupo de avisos), Participantes de todos os grupos, **Enviar aviso** (descobre o grupo de avisos sozinho), Criar, Vincular/Desvincular grupos |
 | **Canal** | Listar canais inscritos, Info, Buscar por convite, Inscrever-se, Mensagens do canal, Criar canal. *Editar nome/descrição/foto de canal não é suportado — a lib WhatsApp do Evolution GO não expõe essa operação.* |
 | **Chat** | Fixar, Desfixar, Arquivar, Desarquivar, Silenciar, Dessilenciar, Buscar histórico de mensagens (solicita reenvio ao WhatsApp — async), **Procurar Mensagens** (busca por número, paginado — só mensagens recebidas desde a 0.2.6) |
+| **Contato** | Verificar números no WhatsApp (vários de uma vez), Foto do contato, Listar contatos, Bloquear, Desbloquear, Listar bloqueados |
+| **Histórico** | Buscar mensagens (texto em português, conversa, tipo, enviadas/recebidas, período), Listar conversas, Buscar mensagem por ID — requer Evolution GO ≥ 0.16.36 |
+| **Agendamento** | Agendar texto (data/hora ou cron recorrente, com fuso), Listar, Pausar, Retomar, Apagar — requer Evolution GO ≥ 0.16.33 |
 | **Perfil** | Buscar perfil, Buscar perfil profissional (Business), Atualizar nome, Atualizar status, Atualizar/Remover foto, Buscar/Atualizar configurações de privacidade |
 | **Integração** | Chatwoot: buscar/definir/remover configuração, resetar status da conversa (precisa selecionar uma instância real, não a chave da credencial) |
 | **Instância** | Listar todas (API key global), Configurar webhook/eventos |
+
+> 🆕 **Requisitos de versão do Evolution GO**: Álbum e lista native flow ≥ 0.16.38; Comunidade
+> (listar/info/participantes) ≥ 0.16.39. Histórico e Agendamento descobrem o ID da instância
+> sozinhos quando "Instância" fica no valor padrão (via `/instance/status`).
 
 > 💬 **Enviar mensagem para um canal**: use o resource **Mensagem** normalmente, colocando o
 > JID do canal (termina em `@newsletter`) no campo **Número**. Use **Canal → Listar Canais**
