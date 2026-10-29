@@ -1,13 +1,14 @@
 {
   "name": "@romariormr/n8n-nodes-evogo",
-  "version": "0.5.0",
-  "description": "n8n community node for Evolution GO WhatsApp API (messages, media, buttons, lists, carousel, groups, channels/newsletters, instances with dynamic dropdown)",
+  "version": "0.6.0",
+  "description": "n8n community node for Evolution GO WhatsApp API (messages, media, albums, buttons, lists, carousel, groups, communities, channels, contacts, message history, scheduling, instances with dynamic dropdown)",
   "keywords": [
     "n8n-community-node-package",
     "evolution-go",
     "evolutiongo",
     "whatsapp",
-    "whatsapp-api"
+    "whatsapp-api",
+    "whatsapp-communities"
   ],
   "license": "MIT",
   "author": "Romario Brito",
