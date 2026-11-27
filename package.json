@@ -23,6 +23,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc && node -e \"require('fs').copyFileSync('nodes/EvolutionGo/evolutiongo.svg','dist/nodes/EvolutionGo/evolutiongo.svg')\"",
+    "docs": "npm run build && node scripts/dump-description.js && python scripts/gen_agent_reference.py dist/description.json package.json AGENT-REFERENCE.md",
     "prepublishOnly": "npm run build"
   },
   "files": [

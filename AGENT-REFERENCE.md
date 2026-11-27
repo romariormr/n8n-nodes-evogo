@@ -1,6 +1,6 @@
 # Evolution GO no n8n — referência para agentes
 
-Gerado a partir do node `@romariormr/n8n-nodes-evogo` v0.6.1 (tipo `@romariormr/n8n-nodes-evogo.evolutionGo`, typeVersion 1).
+Gerado a partir do node `@romariormr/n8n-nodes-evogo` v0.7.0 (tipo `@romariormr/n8n-nodes-evogo.evolutionGo`, typeVersion 1).
 Use este node no lugar de **HTTP Request**: ele resolve o token da instância, monta o corpo certo de cada endpoint e trata erros.
 
 ## Como usar
@@ -40,6 +40,8 @@ Use este node no lugar de **HTTP Request**: ele resolve o token da instância, m
 - [Contato](#contact) — `resource: "contact"`
 - [Histórico](#history) — `resource: "history"`
 - [Agendamento](#schedule) — `resource: "schedule"`
+- [Campanha](#campaign) — `resource: "campaign"`
+- [Resposta Automática](#autoreply) — `resource: "autoReply"`
 - [Perfil](#profile) — `resource: "profile"`
 - [Integração](#integration) — `resource: "integration"`
 - [Instância](#instance) — `resource: "instance"`
@@ -64,7 +66,7 @@ Use este node no lugar de **HTTP Request**: ele resolve o token da instância, m
 |---|---|---|---|---|
 | `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
 | `number` | string | sim |  | Número destino (DDI+DDD+número) ou JID de grupo |
-| `mediaType` | options |  | "image" | valores: `image`, `video`, `audio`, `document` |
+| `mediaType` | options |  | "image" | valores: `image`, `video`, `audio`, `document`, `gif` |
 | `mediaUrl` | string | sim |  |  |
 | `caption` | string |  |  |  |
 | `filename` | string |  |  |  |
@@ -171,8 +173,19 @@ Use este node no lugar de **HTTP Request**: ele resolve o token da instância, m
 |---|---|---|---|---|
 | `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
 | `number` | string | sim |  | Número destino (DDI+DDD+número) ou JID de grupo |
-| `stickerUrl` | string | sim |  | URL de imagem (convertida para sticker WebP) |
+| `stickerSource` | options |  | "url" | Binário evita depender de uma URL acessível pelo servidor Evolution; valores: `url`, `binary` |
+| `stickerUrl` | string | sim |  | URL http(s), data URI (data:image/png;base64,...) ou base64 puro. PNG/JPG/WebP/GIF — vira WebP 512x512.; só se `stickerSource` = `"url"` |
+| `stickerBinaryProperty` | string | sim | "data" | Nome da propriedade binária do item com a imagem (PNG/JPG/WebP/GIF); só se `stickerSource` = `"binary"` |
+| `stickerOptions` | collection |  |  | campos: `packName`, `packPublisher`, `emojis`, `audio` |
 | `additionalOptions` | collection |  |  | campos: `delay`, `mentionAll`, `quotedMessageId`, `formatJid`, `includeInstanceInfo` |
+
+### Resultado Da Enquete — `operation: "pollResults"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+| `pollMessageId` | string | sim |  | ID devolvido no envio da enquete (Enviar Enquete) |
+| `pollResultOptions` | string |  |  | Opcional: rotula os votos quando o servidor não guardou a definição da enquete (ex.: enquete enviada antes da atualização) |
 
 ### Reagir a Mensagem — `operation: "react"`
 
@@ -601,12 +614,30 @@ Use este node no lugar de **HTTP Request**: ele resolve o token da instância, m
 
 `resource: "schedule"`
 
-### Agendar Texto — `operation: "create"`
+### Agendar Mensagem — `operation: "create"`
 
 | Parâmetro | Tipo | Obrig. | Padrão | Observações |
 |---|---|---|---|---|
 | `scheduleNumber` | string | sim |  |  |
-| `scheduleText` | string | sim |  |  |
+| `scheduleType` | options |  | "text" | Mesmo corpo do envio correspondente em Mensagem. Tipos além de texto requerem Evolution GO com suporte a link/media/poll/location/contact no agendamento.; valores: `text`, `link`, `media`, `poll`, `location`, `contact` |
+| `scheduleText` | string | sim |  | No tipo Link, a URL precisa aparecer no texto para a prévia renderizar; só se `scheduleType` = `"text"`, `"link"` |
+| `scheduleLinkUrl` | string | sim |  | só se `scheduleType` = `"link"` |
+| `scheduleLinkTitle` | string |  |  | só se `scheduleType` = `"link"` |
+| `scheduleLinkDescription` | string |  |  | só se `scheduleType` = `"link"` |
+| `scheduleLinkImgUrl` | string |  |  | só se `scheduleType` = `"link"` |
+| `scheduleMediaType` | options |  | "image" | valores: `image`, `video`, `audio`, `document`, `gif`; só se `scheduleType` = `"media"` |
+| `scheduleMediaUrl` | string | sim |  | Baixada pelo servidor na hora do envio — precisa ser acessível por ele (envio por arquivo não é suportado no agendamento); só se `scheduleType` = `"media"` |
+| `scheduleCaption` | string |  |  | só se `scheduleType` = `"media"` |
+| `scheduleFilename` | string |  |  | só se `scheduleType` = `"media"` |
+| `schedulePollQuestion` | string | sim |  | só se `scheduleType` = `"poll"` |
+| `schedulePollOptions` | string | sim |  | Mínimo 2 opções; só se `scheduleType` = `"poll"` |
+| `schedulePollMaxAnswer` | number |  | 1 | só se `scheduleType` = `"poll"` |
+| `scheduleLatitude` | number | sim | 0 | só se `scheduleType` = `"location"` |
+| `scheduleLongitude` | number | sim | 0 | só se `scheduleType` = `"location"` |
+| `scheduleLocationName` | string |  |  | só se `scheduleType` = `"location"` |
+| `scheduleAddress` | string |  |  | só se `scheduleType` = `"location"` |
+| `scheduleContactName` | string | sim |  | só se `scheduleType` = `"contact"` |
+| `scheduleContactPhone` | string | sim |  | só se `scheduleType` = `"contact"` |
 | `scheduleMode` | options |  | "once" | valores: `once`, `cron` |
 | `scheduleSendAt` | dateTime | sim |  | só se `scheduleMode` = `"once"` |
 | `scheduleCron` | string | sim | "0 9 * * 1-5" | 5 campos: minuto hora dia mês dia-da-semana. Ex.: "0 9 * * 1-5" = dias úteis às 09:00.; só se `scheduleMode` = `"cron"` |
@@ -639,6 +670,155 @@ Use este node no lugar de **HTTP Request**: ele resolve o token da instância, m
 | Parâmetro | Tipo | Obrig. | Padrão | Observações |
 |---|---|---|---|---|
 | `scheduleId` | string | sim |  |  |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+## Campanha
+<a id="campaign"></a>
+
+`resource: "campaign"`
+
+### Criar Campanha — `operation: "create"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `campaignName` | string |  |  | Vazio = "Campanha dd/mm hh:mm" |
+| `campaignType` | options |  | "text" | valores: `text`, `media` |
+| `campaignText` | string | sim |  | Use {{name}} para o nome do destinatário e {{chave}} para variáveis informadas no JSON de destinatários; só se `campaignType` = `"text"` |
+| `campaignMediaType` | options |  | "image" | valores: `image`, `video`, `audio`, `document`, `gif`; só se `campaignType` = `"media"` |
+| `campaignMediaUrl` | string | sim |  | Baixada pelo servidor Evolution — precisa ser acessível por ele; só se `campaignType` = `"media"` |
+| `campaignCaption` | string |  |  | Aceita {{name}} e {{chave}}; só se `campaignType` = `"media"` |
+| `campaignFilename` | string |  |  | só se `campaignType` = `"media"` |
+| `campaignNumbers` | string |  |  | Lista simples de destinatários (também aceita vírgula ou ;). Pode combinar com o JSON abaixo; repetidos são removidos. |
+| `campaignRecipients` | json |  | "[]" | Opcional: [{"number": "5511999999999", "name": "Ana", "vars": {"pedido": "123"}}] — name e vars preenchem {{name}} e {{chave}} no texto |
+| `campaignStart` | boolean |  | false | Whether to start the campaign right away (otherwise it is saved as a draft and started later with "Iniciar") |
+| `campaignOptions` | collection |  |  | campos: `startAt`, `delayMinMs`, `delayMaxMs` |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Listar Campanhas — `operation: "list"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Buscar Campanha — `operation: "get"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `campaignId` | string | sim |  |  |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Destinatários — `operation: "recipients"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `campaignId` | string | sim |  |  |
+| `campaignRecipientFilters` | collection |  |  | campos: `status`, `limit`, `offset` |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Iniciar — `operation: "start"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `campaignId` | string | sim |  |  |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Pausar — `operation: "pause"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `campaignId` | string | sim |  |  |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Cancelar — `operation: "cancel"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `campaignId` | string | sim |  |  |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Reenviar Falhas — `operation: "retry"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `campaignId` | string | sim |  |  |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Apagar — `operation: "delete"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `campaignId` | string | sim |  |  |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Descadastro: Listar — `operation: "optOutList"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Descadastro: Adicionar — `operation: "optOutAdd"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `optOutNumber` | string | sim |  |  |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Descadastro: Remover — `operation: "optOutRemove"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `optOutNumber` | string | sim |  |  |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+## Resposta Automática
+<a id="autoreply"></a>
+
+`resource: "autoReply"`
+
+### Listar Regras — `operation: "list"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Criar Regra — `operation: "create"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `autoReplyName` | string |  |  |  |
+| `autoReplyEnabled` | boolean |  | true | Whether the rule is active |
+| `autoReplyTrigger` | options |  | "keyword" | valores: `keyword`, `away`, `welcome` |
+| `autoReplyMatchType` | options |  | "contains" | valores: `contains`, `equals`, `startsWith`, `regex`; só se `autoReplyTrigger` = `"keyword"` |
+| `autoReplyPattern` | string | sim |  | Texto (sem diferenciar maiúsculas) ou regex; só se `autoReplyTrigger` = `"keyword"` |
+| `autoReplyResponse` | string | sim |  | Até 4096 caracteres. {{name}} vira o nome do contato. |
+| `autoReplyDays` | string |  | "1,2,3,4,5" | 0=domingo … 6=sábado, separados por vírgula; só se `autoReplyTrigger` = `"away"` |
+| `autoReplyStartTime` | string |  | "08:00" | só se `autoReplyTrigger` = `"away"` |
+| `autoReplyEndTime` | string |  | "18:00" | Pode virar o dia (ex.: 22:00 às 06:00); só se `autoReplyTrigger` = `"away"` |
+| `autoReplyOptions` | collection |  |  | Na atualização, o que não for informado aqui mantém o valor atual da regra; campos: `priority`, `cooldownMinutes`, `skipIfAgent`, `timezone` |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Atualizar Regra — `operation: "update"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `autoReplyRuleId` | string | sim |  |  |
+| `autoReplyName` | string |  |  |  |
+| `autoReplyEnabled` | boolean |  | true | Whether the rule is active |
+| `autoReplyTrigger` | options |  | "keyword" | valores: `keyword`, `away`, `welcome` |
+| `autoReplyMatchType` | options |  | "contains" | valores: `contains`, `equals`, `startsWith`, `regex`; só se `autoReplyTrigger` = `"keyword"` |
+| `autoReplyPattern` | string | sim |  | Texto (sem diferenciar maiúsculas) ou regex; só se `autoReplyTrigger` = `"keyword"` |
+| `autoReplyResponse` | string | sim |  | Até 4096 caracteres. {{name}} vira o nome do contato. |
+| `autoReplyDays` | string |  | "1,2,3,4,5" | 0=domingo … 6=sábado, separados por vírgula; só se `autoReplyTrigger` = `"away"` |
+| `autoReplyStartTime` | string |  | "08:00" | só se `autoReplyTrigger` = `"away"` |
+| `autoReplyEndTime` | string |  | "18:00" | Pode virar o dia (ex.: 22:00 às 06:00); só se `autoReplyTrigger` = `"away"` |
+| `autoReplyOptions` | collection |  |  | Na atualização, o que não for informado aqui mantém o valor atual da regra; campos: `priority`, `cooldownMinutes`, `skipIfAgent`, `timezone` |
+| `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
+
+### Apagar Regra — `operation: "delete"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `autoReplyRuleId` | string | sim |  |  |
 | `instanceId` | options |  |  | Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só.; lista dinâmica (instâncias da credencial) |
 
 ## Perfil
@@ -757,3 +937,56 @@ _Sem parâmetros além de resource/operation._
 | `instanceId` | options |  |  | Instância alvo da configuração.; lista dinâmica (instâncias da credencial) |
 | `webhookUrl` | string | sim |  |  |
 | `subscribeEvents` | multiOptions |  | ["MESSAGE", "BUTTON_CLICK"] | valores: `BUTTON_CLICK`, `CALL`, `CONNECTION`, `GROUP`, `MESSAGE`, `PRESENCE`, `READ_RECEIPT`, `SEND_MESSAGE` |
+
+### Listar Webhooks Extras — `operation: "webhookList"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância alvo da configuração.; lista dinâmica (instâncias da credencial) |
+
+### Adicionar Webhook Extra — `operation: "webhookAdd"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância alvo da configuração.; lista dinâmica (instâncias da credencial) |
+| `extraWebhookUrl` | string | sim |  | Webhook adicional que recebe os mesmos eventos do principal |
+
+### Remover Webhook Extra — `operation: "webhookRemove"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância alvo da configuração.; lista dinâmica (instâncias da credencial) |
+| `extraWebhookUrl` | string | sim |  | Webhook adicional que recebe os mesmos eventos do principal |
+
+### Testar Webhooks — `operation: "webhookTest"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância alvo da configuração.; lista dinâmica (instâncias da credencial) |
+
+### Entregas De Webhook (Log) — `operation: "webhookDeliveries"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância alvo da configuração.; lista dinâmica (instâncias da credencial) |
+| `webhookDeliveryFilters` | collection |  |  | campos: `status`, `limit` |
+
+### Reenviar Entrega De Webhook — `operation: "webhookResend"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância alvo da configuração.; lista dinâmica (instâncias da credencial) |
+| `webhookDeliveryId` | string | sim |  | ID da entrega (veja "Entregas De Webhook (Log)") |
+
+### Buscar Configurações Avançadas — `operation: "getAdvancedSettings"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância alvo da configuração.; lista dinâmica (instâncias da credencial) |
+
+### Atualizar Configurações Avançadas — `operation: "updateAdvancedSettings"`
+
+| Parâmetro | Tipo | Obrig. | Padrão | Observações |
+|---|---|---|---|---|
+| `instanceId` | options |  |  | Instância alvo da configuração.; lista dinâmica (instâncias da credencial) |
+| `advancedSettings` | collection |  |  | Só os campos informados mudam; o resto mantém o valor atual (o node lê as configurações antes de gravar); campos: `alwaysOnline`, `rejectCall`, `msgRejectCall`, `readMessages`, `ignoreGroups`, `ignoreStatus`, `antiBanEnabled`, `antiBanLimit`, `antiBanWindowSec`, `antiBanDelayMinMs`, `antiBanDelayMaxMs`, `antiBanTyping` |

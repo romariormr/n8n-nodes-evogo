@@ -46,6 +46,7 @@ no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instânci
 dos parâmetros (`resource`, `operation`, campos, tipos, obrigatórios, valores aceitos) e um
 exemplo de node em JSON. É gerado a partir do próprio node — use para montar workflows ou
 para orientar um agente de IA a usar este node em vez de HTTP Request.
+Para regenerar depois de mudar o node: `npm run docs` (precisa de Node e Python).
 
 ## Foto de grupo (Grupo → Alterar Foto)
 

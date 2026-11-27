@@ -827,6 +827,7 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Vídeo', value: 'video' },
 					{ name: 'Áudio', value: 'audio' },
 					{ name: 'Documento', value: 'document' },
+					{ name: 'GIF (Evolution GO ≥ 0.18.0)', value: 'gif' },
 				],
 				default: 'image',
 				displayOptions: { show: { resource: ['campaign'], operation: ['create'], campaignType: ['media'] } },
@@ -3850,19 +3851,25 @@ addExtras();
 						delete rule.lastMatchAt;
 						delete rule.createdAt;
 						delete rule.updatedAt;
-						const trigger = this.getNodeParameter('autoReplyTrigger', i, 'keyword') as string;
-						rule.name = this.getNodeParameter('autoReplyName', i, '') as string;
-						rule.enabled = this.getNodeParameter('autoReplyEnabled', i, true) as boolean;
+						// Campo vazio no formulário mantém o valor atual da regra (útil no
+						// "atualizar": dá pra mudar só a resposta, por exemplo).
+						const str = (param: string, key: string, def: string): string => {
+							const v = ((this.getNodeParameter(param, i, '') as string) ?? '').toString().trim();
+							return v !== '' ? v : ((base[key] as string) ?? def);
+						};
+						const trigger = str('autoReplyTrigger', 'trigger', 'keyword');
+						rule.name = str('autoReplyName', 'name', '');
+						rule.enabled = this.getNodeParameter('autoReplyEnabled', i, (base.enabled as boolean) ?? true) as boolean;
 						rule.trigger = trigger;
-						rule.response = this.getNodeParameter('autoReplyResponse', i) as string;
+						rule.response = str('autoReplyResponse', 'response', '');
 						if (trigger === 'keyword') {
-							rule.matchType = this.getNodeParameter('autoReplyMatchType', i, 'contains') as string;
-							rule.pattern = this.getNodeParameter('autoReplyPattern', i) as string;
+							rule.matchType = str('autoReplyMatchType', 'matchType', 'contains');
+							rule.pattern = str('autoReplyPattern', 'pattern', '');
 						}
 						if (trigger === 'away') {
-							rule.days = (this.getNodeParameter('autoReplyDays', i, '1,2,3,4,5') as string).replace(/\s+/g, '');
-							rule.startTime = (this.getNodeParameter('autoReplyStartTime', i, '08:00') as string).trim();
-							rule.endTime = (this.getNodeParameter('autoReplyEndTime', i, '18:00') as string).trim();
+							rule.days = str('autoReplyDays', 'days', '1,2,3,4,5').replace(/\s+/g, '');
+							rule.startTime = str('autoReplyStartTime', 'startTime', '08:00');
+							rule.endTime = str('autoReplyEndTime', 'endTime', '18:00');
 						}
 						const o = this.getNodeParameter('autoReplyOptions', i, {}) as IDataObject;
 						if (o.priority !== undefined) rule.priority = o.priority;
