@@ -36,6 +36,13 @@ no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instânci
 > JID do canal (termina em `@newsletter`) no campo **Número**. Use **Canal → Listar Canais**
 > pra descobrir o JID de cada canal que você segue.
 
+## Referência completa (para agentes e automação)
+
+[`AGENT-REFERENCE.md`](AGENT-REFERENCE.md) lista **todas** as operações com os nomes internos
+dos parâmetros (`resource`, `operation`, campos, tipos, obrigatórios, valores aceitos) e um
+exemplo de node em JSON. É gerado a partir do próprio node — use para montar workflows ou
+para orientar um agente de IA a usar este node em vez de HTTP Request.
+
 ## Foto de grupo (Grupo → Alterar Foto)
 
 Campo **Origem Da Foto**:

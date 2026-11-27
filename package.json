@@ -27,7 +27,8 @@
   },
   "files": [
     "dist",
-    "index.js"
+    "index.js",
+    "AGENT-REFERENCE.md"
   ],
   "n8n": {
     "n8nNodesApiVersion": 1,
