@@ -1,7 +1,7 @@
 {
   "name": "@romariormr/n8n-nodes-evogo",
-  "version": "0.6.1",
-  "description": "n8n community node for Evolution GO WhatsApp API (messages, media, albums, buttons, lists, carousel, groups, communities, channels, contacts, message history, scheduling, instances with dynamic dropdown)",
+  "version": "0.7.0",
+  "description": "n8n community node for Evolution GO WhatsApp API (messages, media, albums, buttons, lists, carousel, groups, communities, channels, contacts, message history, scheduling, bulk campaigns with opt-out, auto-replies, poll results, extra webhooks with delivery log, anti-ban settings, instances with dynamic dropdown)",
   "keywords": [
     "n8n-community-node-package",
     "evolution-go",

@@ -15,7 +15,7 @@ no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instânci
 
 | Resource | Operações |
 |---|---|
-| **Mensagem** | Texto, **Link (prévia rica)**, Mídia (imagem/vídeo/áudio/documento por URL), **Álbum** (2 a 30 fotos/vídeos numa bolha), Botões (reply/url/call/copy/**pix**, com **imagem no cabeçalho** — URL / Data URI / Binário), Lista (opção **native flow** — gaveta dos clientes atuais), Carrossel, Enquete, Localização, Contato, Sticker, Reagir, Marcar como lida, Editar, Apagar, Presença (digitando/gravando) |
+| **Mensagem** | Texto, **Link (prévia rica)**, Mídia (imagem/vídeo/áudio/documento/**GIF** por URL), **Álbum** (2 a 30 fotos/vídeos numa bolha), Botões (reply/url/call/copy/**pix**, com **imagem no cabeçalho** — URL / Data URI / Binário), Lista (opção **native flow** — gaveta dos clientes atuais), Carrossel, Enquete, Localização, Contato, **Sticker** (URL / Data URI / base64 / **Binário**, nome do pacote, autor, até 3 emojis, áudio experimental — figurinha com som), **Resultado da Enquete** (votos por opção), Reagir, Marcar como lida, Editar, Apagar, Presença (digitando/gravando) |
 | **Status (Stories)** | Status de texto; Status de mídia (imagem/vídeo — URL / Data URI / Binário) com legenda. *Publica pros contatos da instância; link na legenda não é clicável (limitação do WhatsApp).* |
 | **Grupo** | Listar, Meus grupos, Info, Criar, Link de convite, Entrar via link, Sair, Participantes (add/remove/promote/demote), Nome, Descrição, **Foto** (URL / Data URI / **Binário**), **Foto em Lote** (N grupos, retry, dry-run, resumo), **Atualizar Configurações** (announce/locked/aprovação/quem adiciona) |
 | **Comunidade** | Listar comunidades, Informações (grupos vinculados + grupo de avisos), Participantes de todos os grupos, **Enviar aviso** (descobre o grupo de avisos sozinho), Criar, Vincular/Desvincular grupos |
@@ -23,14 +23,18 @@ no estilo do `n8n-nodes-evolution-api` — com **dropdown dinâmico de instânci
 | **Chat** | Fixar, Desfixar, Arquivar, Desarquivar, Silenciar, Dessilenciar, Buscar histórico de mensagens (solicita reenvio ao WhatsApp — async), **Procurar Mensagens** (busca por número, paginado — só mensagens recebidas desde a 0.2.6) |
 | **Contato** | Verificar números no WhatsApp (vários de uma vez), Foto do contato, Listar contatos, Bloquear, Desbloquear, Listar bloqueados |
 | **Histórico** | Buscar mensagens (texto em português, conversa, tipo, enviadas/recebidas, período), Listar conversas, Buscar mensagem por ID — requer Evolution GO ≥ 0.16.36 |
-| **Agendamento** | Agendar texto (data/hora ou cron recorrente, com fuso), Listar, Pausar, Retomar, Apagar — requer Evolution GO ≥ 0.16.33 |
+| **Agendamento** | Agendar mensagem — **texto, link, mídia (URL), enquete, localização ou contato** (data/hora ou cron recorrente, com fuso), Listar, Pausar, Retomar, Apagar — requer Evolution GO ≥ 0.16.33 |
+| **Campanha** | Criar (texto ou mídia, números um por linha e/ou JSON com `name`/`vars` para `{{name}}`/`{{chave}}`, início agendado, intervalo aleatório entre envios, iniciar já ou rascunho), Listar, Buscar, Destinatários (filtro por status, paginado), Iniciar, Pausar, Cancelar, Reenviar falhas, Apagar; **Descadastro** (opt-out): listar, adicionar, remover |
+| **Resposta Automática** | Listar, Criar, Atualizar, Apagar regras — gatilho palavra-chave (contém/igual/começa com/regex), fora do horário (dias + horário, com fuso) ou boas-vindas; prioridade, intervalo por contato, não responder se houver atendente no Chatwoot |
 | **Perfil** | Buscar perfil, Buscar perfil profissional (Business), Atualizar nome, Atualizar status, Atualizar/Remover foto, Buscar/Atualizar configurações de privacidade |
 | **Integração** | Chatwoot: buscar/definir/remover configuração, resetar status da conversa (precisa selecionar uma instância real, não a chave da credencial) |
-| **Instância** | Listar todas (API key global), Configurar webhook/eventos |
+| **Instância** | Listar todas (API key global), Configurar webhook/eventos, **Webhooks extras** (listar/adicionar/remover), **Testar webhooks**, **Entregas de webhook** (log com filtro de status/limite) e **Reenviar entrega**, **Configurações avançadas** (buscar/atualizar: sempre online, rejeitar chamadas, ler mensagens, ignorar grupos/status, **anti-ban**) |
 
 > 🆕 **Requisitos de versão do Evolution GO**: Álbum e lista native flow ≥ 0.16.38; Comunidade
 > (listar/info/participantes) ≥ 0.16.39. Histórico e Agendamento descobrem o ID da instância
-> sozinhos quando "Instância" fica no valor padrão (via `/instance/status`).
+> sozinhos quando "Instância" fica no valor padrão (via `/instance/status`) — o mesmo vale para
+> Campanha, Resposta Automática e as operações de webhook/configurações avançadas da Instância.
+> GIF em Enviar Mídia e o áudio da figurinha dependem de versão do servidor que aceite esses campos.
 
 > 💬 **Enviar mensagem para um canal**: use o resource **Mensagem** normalmente, colocando o
 > JID do canal (termina em `@newsletter`) no campo **Número**. Use **Canal → Listar Canais**

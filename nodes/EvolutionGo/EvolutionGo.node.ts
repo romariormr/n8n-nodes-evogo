@@ -66,7 +66,7 @@ export class EvolutionGo implements INodeType {
 		group: ['output'],
 		version: 1,
 		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
-		description: 'WhatsApp via Evolution GO: mensagens (texto, mídia, álbum, botões, listas, carrossel), grupos, comunidades, canais, contatos, histórico e agendamentos',
+		description: 'WhatsApp via Evolution GO: mensagens (texto, mídia, álbum, botões, listas, carrossel), grupos, comunidades, canais, contatos, histórico, agendamentos, campanhas e respostas automáticas',
 		defaults: {
 			name: 'Evolution GO',
 		},
@@ -95,6 +95,8 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Contato', value: 'contact' },
 					{ name: 'Histórico', value: 'history' },
 					{ name: 'Agendamento', value: 'schedule' },
+					{ name: 'Campanha', value: 'campaign' },
+					{ name: 'Resposta Automática', value: 'autoReply' },
 					{ name: 'Perfil', value: 'profile' },
 					{ name: 'Integração', value: 'integration' },
 					{ name: 'Instância', value: 'instance' },
@@ -121,6 +123,7 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Enviar Localização', value: 'sendLocation', action: 'Enviar localizacao' },
 					{ name: 'Enviar Contato', value: 'sendContact', action: 'Enviar contato' },
 					{ name: 'Enviar Sticker', value: 'sendSticker', action: 'Enviar sticker' },
+					{ name: 'Resultado Da Enquete', value: 'pollResults', action: 'Resultado da enquete' },
 					{ name: 'Reagir a Mensagem', value: 'react', action: 'Reagir a mensagem' },
 					{ name: 'Marcar Como Lida', value: 'markRead', action: 'Marcar como lida' },
 					{ name: 'Editar Mensagem', value: 'editMessage', action: 'Editar mensagem' },
@@ -340,6 +343,14 @@ export class EvolutionGo implements INodeType {
 				options: [
 					{ name: 'Listar Todas (API Key Global)', value: 'listAll', action: 'Listar instancias' },
 					{ name: 'Configurar Webhook/Eventos', value: 'configureWebhook', action: 'Configurar webhook' },
+					{ name: 'Listar Webhooks Extras', value: 'webhookList', action: 'Listar webhooks extras' },
+					{ name: 'Adicionar Webhook Extra', value: 'webhookAdd', action: 'Adicionar webhook extra' },
+					{ name: 'Remover Webhook Extra', value: 'webhookRemove', action: 'Remover webhook extra' },
+					{ name: 'Testar Webhooks', value: 'webhookTest', action: 'Testar webhooks' },
+					{ name: 'Entregas De Webhook (Log)', value: 'webhookDeliveries', action: 'Listar entregas de webhook' },
+					{ name: 'Reenviar Entrega De Webhook', value: 'webhookResend', action: 'Reenviar entrega de webhook' },
+					{ name: 'Buscar Configurações Avançadas', value: 'getAdvancedSettings', action: 'Buscar configuracoes avancadas' },
+					{ name: 'Atualizar Configurações Avançadas', value: 'updateAdvancedSettings', action: 'Atualizar configuracoes avancadas' },
 				],
 				default: 'listAll',
 			},
@@ -499,7 +510,7 @@ export class EvolutionGo implements INodeType {
 				noDataExpression: true,
 				displayOptions: { show: { resource: ['schedule'] } },
 				options: [
-					{ name: 'Agendar Texto', value: 'create', action: 'Agendar mensagem de texto' },
+					{ name: 'Agendar Mensagem', value: 'create', action: 'Agendar mensagem' },
 					{ name: 'Listar Agendamentos', value: 'list', action: 'Listar agendamentos' },
 					{ name: 'Pausar', value: 'pause', action: 'Pausar agendamento' },
 					{ name: 'Retomar', value: 'resume', action: 'Retomar agendamento' },
@@ -517,13 +528,172 @@ export class EvolutionGo implements INodeType {
 				displayOptions: { show: { resource: ['schedule'], operation: ['create'] } },
 			},
 			{
+				displayName: 'Tipo De Mensagem',
+				name: 'scheduleType',
+				type: 'options',
+				options: [
+					{ name: 'Texto', value: 'text' },
+					{ name: 'Link (Prévia Rica)', value: 'link' },
+					{ name: 'Mídia (URL)', value: 'media' },
+					{ name: 'Enquete', value: 'poll' },
+					{ name: 'Localização', value: 'location' },
+					{ name: 'Contato', value: 'contact' },
+				],
+				default: 'text',
+				description: 'Mesmo corpo do envio correspondente em Mensagem. Tipos além de texto requerem Evolution GO com suporte a link/media/poll/location/contact no agendamento.',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'] } },
+			},
+			{
 				displayName: 'Texto',
 				name: 'scheduleText',
 				type: 'string',
 				typeOptions: { rows: 4 },
 				default: '',
 				required: true,
-				displayOptions: { show: { resource: ['schedule'], operation: ['create'] } },
+				description: 'No tipo Link, a URL precisa aparecer no texto para a prévia renderizar',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['text', 'link'] } },
+			},
+			{
+				displayName: 'URL Do Link',
+				name: 'scheduleLinkUrl',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'https://example.com',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['link'] } },
+			},
+			{
+				displayName: 'Título Da Prévia',
+				name: 'scheduleLinkTitle',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['link'] } },
+			},
+			{
+				displayName: 'Descrição Da Prévia',
+				name: 'scheduleLinkDescription',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['link'] } },
+			},
+			{
+				displayName: 'Imagem Da Prévia (URL)',
+				name: 'scheduleLinkImgUrl',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['link'] } },
+			},
+			{
+				displayName: 'Tipo De Mídia',
+				name: 'scheduleMediaType',
+				type: 'options',
+				options: [
+					{ name: 'Imagem', value: 'image' },
+					{ name: 'Vídeo', value: 'video' },
+					{ name: 'Áudio (PTT)', value: 'audio' },
+					{ name: 'Documento', value: 'document' },
+					{ name: 'GIF (MP4 Como GIF Animado)', value: 'gif' },
+				],
+				default: 'image',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['media'] } },
+			},
+			{
+				displayName: 'URL Da Mídia',
+				name: 'scheduleMediaUrl',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'https://example.com/arquivo.jpg',
+				description: 'Baixada pelo servidor na hora do envio — precisa ser acessível por ele (envio por arquivo não é suportado no agendamento)',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['media'] } },
+			},
+			{
+				displayName: 'Legenda',
+				name: 'scheduleCaption',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['media'] } },
+			},
+			{
+				displayName: 'Nome Do Arquivo',
+				name: 'scheduleFilename',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['media'] } },
+			},
+			{
+				displayName: 'Pergunta',
+				name: 'schedulePollQuestion',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['poll'] } },
+			},
+			{
+				displayName: 'Opções (Uma Por Linha)',
+				name: 'schedulePollOptions',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				required: true,
+				description: 'Mínimo 2 opções',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['poll'] } },
+			},
+			{
+				displayName: 'Máximo De Seleções',
+				name: 'schedulePollMaxAnswer',
+				type: 'number',
+				default: 1,
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['poll'] } },
+			},
+			{
+				displayName: 'Latitude',
+				name: 'scheduleLatitude',
+				type: 'number',
+				typeOptions: { numberPrecision: 7 },
+				default: 0,
+				required: true,
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['location'] } },
+			},
+			{
+				displayName: 'Longitude',
+				name: 'scheduleLongitude',
+				type: 'number',
+				typeOptions: { numberPrecision: 7 },
+				default: 0,
+				required: true,
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['location'] } },
+			},
+			{
+				displayName: 'Nome Do Local',
+				name: 'scheduleLocationName',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['location'] } },
+			},
+			{
+				displayName: 'Endereço',
+				name: 'scheduleAddress',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['location'] } },
+			},
+			{
+				displayName: 'Nome Do Contato',
+				name: 'scheduleContactName',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['contact'] } },
+			},
+			{
+				displayName: 'Telefone Do Contato',
+				name: 'scheduleContactPhone',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: '5511999999999',
+				displayOptions: { show: { resource: ['schedule'], operation: ['create'], scheduleType: ['contact'] } },
 			},
 			{
 				displayName: 'Quando',
@@ -586,6 +756,372 @@ export class EvolutionGo implements INodeType {
 				],
 				default: '',
 				displayOptions: { show: { resource: ['schedule'], operation: ['list'] } },
+			},
+
+			// ── Operations: Campanha ────────────────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['campaign'] } },
+				options: [
+					{ name: 'Criar Campanha', value: 'create', action: 'Criar campanha' },
+					{ name: 'Listar Campanhas', value: 'list', action: 'Listar campanhas' },
+					{ name: 'Buscar Campanha', value: 'get', action: 'Buscar campanha' },
+					{ name: 'Destinatários', value: 'recipients', action: 'Listar destinatarios da campanha' },
+					{ name: 'Iniciar', value: 'start', action: 'Iniciar campanha' },
+					{ name: 'Pausar', value: 'pause', action: 'Pausar campanha' },
+					{ name: 'Cancelar', value: 'cancel', action: 'Cancelar campanha' },
+					{ name: 'Reenviar Falhas', value: 'retry', action: 'Reenviar falhas da campanha' },
+					{ name: 'Apagar', value: 'delete', action: 'Apagar campanha' },
+					{ name: 'Descadastro: Listar', value: 'optOutList', action: 'Listar descadastros' },
+					{ name: 'Descadastro: Adicionar', value: 'optOutAdd', action: 'Adicionar descadastro' },
+					{ name: 'Descadastro: Remover', value: 'optOutRemove', action: 'Remover descadastro' },
+				],
+				default: 'list',
+			},
+			{
+				displayName:
+					'Só dispare para quem consentiu receber (LGPD). Quem responder SAIR/PARAR entra no descadastro da instância e é pulado nas próximas campanhas. Os envios passam pela fila anti-ban da instância.',
+				name: 'campaignNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Nome Da Campanha',
+				name: 'campaignName',
+				type: 'string',
+				default: '',
+				description: 'Vazio = "Campanha dd/mm hh:mm"',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Tipo',
+				name: 'campaignType',
+				type: 'options',
+				options: [
+					{ name: 'Texto', value: 'text' },
+					{ name: 'Mídia (URL)', value: 'media' },
+				],
+				default: 'text',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Texto',
+				name: 'campaignText',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				required: true,
+				description: 'Use {{name}} para o nome do destinatário e {{chave}} para variáveis informadas no JSON de destinatários',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'], campaignType: ['text'] } },
+			},
+			{
+				displayName: 'Tipo De Mídia',
+				name: 'campaignMediaType',
+				type: 'options',
+				options: [
+					{ name: 'Imagem', value: 'image' },
+					{ name: 'Vídeo', value: 'video' },
+					{ name: 'Áudio', value: 'audio' },
+					{ name: 'Documento', value: 'document' },
+				],
+				default: 'image',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'], campaignType: ['media'] } },
+			},
+			{
+				displayName: 'URL Da Mídia',
+				name: 'campaignMediaUrl',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'https://example.com/arquivo.jpg',
+				description: 'Baixada pelo servidor Evolution — precisa ser acessível por ele',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'], campaignType: ['media'] } },
+			},
+			{
+				displayName: 'Legenda',
+				name: 'campaignCaption',
+				type: 'string',
+				typeOptions: { rows: 3 },
+				default: '',
+				description: 'Aceita {{name}} e {{chave}}',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'], campaignType: ['media'] } },
+			},
+			{
+				displayName: 'Nome Do Arquivo',
+				name: 'campaignFilename',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'], campaignType: ['media'] } },
+			},
+			{
+				displayName: 'Números (Um Por Linha)',
+				name: 'campaignNumbers',
+				type: 'string',
+				typeOptions: { rows: 5 },
+				default: '',
+				placeholder: '5511999999999\n5511988888888',
+				description: 'Lista simples de destinatários (também aceita vírgula ou ;). Pode combinar com o JSON abaixo; repetidos são removidos.',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Destinatários (JSON)',
+				name: 'campaignRecipients',
+				type: 'json',
+				default: '[]',
+				description:
+					'Opcional: [{"number": "5511999999999", "name": "Ana", "vars": {"pedido": "123"}}] — name e vars preenchem {{name}} e {{chave}} no texto',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Iniciar Agora',
+				name: 'campaignStart',
+				type: 'boolean',
+				default: false,
+				description: 'Whether to start the campaign right away (otherwise it is saved as a draft and started later with "Iniciar")',
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'] } },
+			},
+			{
+				displayName: 'Opções',
+				name: 'campaignOptions',
+				type: 'collection',
+				placeholder: 'Adicionar opção',
+				default: {},
+				displayOptions: { show: { resource: ['campaign'], operation: ['create'] } },
+				options: [
+					{
+						displayName: 'Começar Em',
+						name: 'startAt',
+						type: 'dateTime',
+						default: '',
+						description: 'Não envia antes desta data/hora (a campanha precisa estar iniciada)',
+					},
+					{
+						displayName: 'Intervalo Mínimo (Ms)',
+						name: 'delayMinMs',
+						type: 'number',
+						default: 3000,
+						description: 'Espera mínima entre um envio e outro (padrão 3000, máximo 600000)',
+					},
+					{
+						displayName: 'Intervalo Máximo (Ms)',
+						name: 'delayMaxMs',
+						type: 'number',
+						default: 8000,
+						description: 'Espera máxima entre um envio e outro (padrão 8000, máximo 600000)',
+					},
+				],
+			},
+			{
+				displayName: 'ID Da Campanha',
+				name: 'campaignId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: {
+					show: {
+						resource: ['campaign'],
+						operation: ['get', 'recipients', 'start', 'pause', 'cancel', 'retry', 'delete'],
+					},
+				},
+			},
+			{
+				displayName: 'Filtros',
+				name: 'campaignRecipientFilters',
+				type: 'collection',
+				placeholder: 'Adicionar filtro',
+				default: {},
+				displayOptions: { show: { resource: ['campaign'], operation: ['recipients'] } },
+				options: [
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{ name: 'Todos', value: '' },
+							{ name: 'Pendentes', value: 'pending' },
+							{ name: 'Enviando', value: 'sending' },
+							{ name: 'Enviados', value: 'sent' },
+							{ name: 'Com Falha', value: 'failed' },
+							{ name: 'Pulados', value: 'skipped' },
+						],
+						default: '',
+					},
+					{ displayName: 'Limite', name: 'limit', type: 'number', typeOptions: { minValue: 1 }, default: 100 },
+					{ displayName: 'Deslocamento (Offset)', name: 'offset', type: 'number', typeOptions: { minValue: 0 }, default: 0 },
+				],
+			},
+			{
+				displayName: 'Número',
+				name: 'optOutNumber',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: '5511999999999',
+				displayOptions: { show: { resource: ['campaign'], operation: ['optOutAdd', 'optOutRemove'] } },
+			},
+
+			// ── Operations: Resposta Automática ─────────────────────
+			{
+				displayName: 'Operation',
+				name: 'operation',
+				type: 'options',
+				noDataExpression: true,
+				displayOptions: { show: { resource: ['autoReply'] } },
+				options: [
+					{ name: 'Listar Regras', value: 'list', action: 'Listar regras de resposta automatica' },
+					{ name: 'Criar Regra', value: 'create', action: 'Criar regra de resposta automatica' },
+					{ name: 'Atualizar Regra', value: 'update', action: 'Atualizar regra de resposta automatica' },
+					{ name: 'Apagar Regra', value: 'delete', action: 'Apagar regra de resposta automatica' },
+				],
+				default: 'list',
+			},
+			{
+				displayName:
+					'Uma mensagem dispara no máximo uma regra (a de menor prioridade que casar). Grupos, status e canais são ignorados. Use {{name}} na resposta para o nome do contato.',
+				name: 'autoReplyNotice',
+				type: 'notice',
+				default: '',
+				displayOptions: { show: { resource: ['autoReply'], operation: ['create', 'update'] } },
+			},
+			{
+				displayName: 'ID Da Regra',
+				name: 'autoReplyRuleId',
+				type: 'string',
+				default: '',
+				required: true,
+				displayOptions: { show: { resource: ['autoReply'], operation: ['update', 'delete'] } },
+			},
+			{
+				displayName: 'Nome',
+				name: 'autoReplyName',
+				type: 'string',
+				default: '',
+				displayOptions: { show: { resource: ['autoReply'], operation: ['create', 'update'] } },
+			},
+			{
+				displayName: 'Ativa',
+				name: 'autoReplyEnabled',
+				type: 'boolean',
+				default: true,
+				description: 'Whether the rule is active',
+				displayOptions: { show: { resource: ['autoReply'], operation: ['create', 'update'] } },
+			},
+			{
+				displayName: 'Gatilho',
+				name: 'autoReplyTrigger',
+				type: 'options',
+				options: [
+					{ name: 'Palavra-Chave', value: 'keyword', description: 'A mensagem casa com o padrão' },
+					{ name: 'Fora Do Horário', value: 'away', description: 'Qualquer mensagem fora do horário de atendimento' },
+					{ name: 'Boas-Vindas', value: 'welcome', description: 'Primeira mensagem do contato dentro do intervalo (cooldown)' },
+				],
+				default: 'keyword',
+				displayOptions: { show: { resource: ['autoReply'], operation: ['create', 'update'] } },
+			},
+			{
+				displayName: 'Tipo De Comparação',
+				name: 'autoReplyMatchType',
+				type: 'options',
+				options: [
+					{ name: 'Contém', value: 'contains' },
+					{ name: 'Igual', value: 'equals' },
+					{ name: 'Começa Com', value: 'startsWith' },
+					{ name: 'Regex (RE2)', value: 'regex' },
+				],
+				default: 'contains',
+				displayOptions: {
+					show: { resource: ['autoReply'], operation: ['create', 'update'], autoReplyTrigger: ['keyword'] },
+				},
+			},
+			{
+				displayName: 'Padrão',
+				name: 'autoReplyPattern',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'preço',
+				description: 'Texto (sem diferenciar maiúsculas) ou regex',
+				displayOptions: {
+					show: { resource: ['autoReply'], operation: ['create', 'update'], autoReplyTrigger: ['keyword'] },
+				},
+			},
+			{
+				displayName: 'Resposta',
+				name: 'autoReplyResponse',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				required: true,
+				description: 'Até 4096 caracteres. {{name}} vira o nome do contato.',
+				displayOptions: { show: { resource: ['autoReply'], operation: ['create', 'update'] } },
+			},
+			{
+				displayName: 'Dias De Atendimento',
+				name: 'autoReplyDays',
+				type: 'string',
+				default: '1,2,3,4,5',
+				description: '0=domingo … 6=sábado, separados por vírgula',
+				displayOptions: {
+					show: { resource: ['autoReply'], operation: ['create', 'update'], autoReplyTrigger: ['away'] },
+				},
+			},
+			{
+				displayName: 'Início Do Atendimento',
+				name: 'autoReplyStartTime',
+				type: 'string',
+				default: '08:00',
+				placeholder: 'HH:MM',
+				displayOptions: {
+					show: { resource: ['autoReply'], operation: ['create', 'update'], autoReplyTrigger: ['away'] },
+				},
+			},
+			{
+				displayName: 'Fim Do Atendimento',
+				name: 'autoReplyEndTime',
+				type: 'string',
+				default: '18:00',
+				placeholder: 'HH:MM',
+				description: 'Pode virar o dia (ex.: 22:00 às 06:00)',
+				displayOptions: {
+					show: { resource: ['autoReply'], operation: ['create', 'update'], autoReplyTrigger: ['away'] },
+				},
+			},
+			{
+				displayName: 'Opções',
+				name: 'autoReplyOptions',
+				type: 'collection',
+				placeholder: 'Adicionar opção',
+				default: {},
+				description: 'Na atualização, o que não for informado aqui mantém o valor atual da regra',
+				displayOptions: { show: { resource: ['autoReply'], operation: ['create', 'update'] } },
+				options: [
+					{
+						displayName: 'Prioridade',
+						name: 'priority',
+						type: 'number',
+						default: 0,
+						description: 'Menor vence. 0 = padrão do gatilho (palavra-chave 10, fora do horário 20, boas-vindas 30).',
+					},
+					{
+						displayName: 'Intervalo Por Contato (Min)',
+						name: 'cooldownMinutes',
+						type: 'number',
+						default: 0,
+						description: 'Não repete a resposta pro mesmo contato antes disso. 0 = padrão (fora do horário 240, boas-vindas 1440).',
+					},
+					{
+						displayName: 'Não Responder Se Houver Atendente',
+						name: 'skipIfAgent',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to skip the reply when the conversation already has an agent assigned in Chatwoot',
+					},
+					{ displayName: 'Fuso Horário', name: 'timezone', type: 'string', default: 'America/Sao_Paulo' },
+				],
 			},
 
 			// ── Operations: Contato ─────────────────────────────────
@@ -688,7 +1224,7 @@ export class EvolutionGo implements INodeType {
 					'Instância WhatsApp que envia. Deixe no valor padrão pra usar a chave da credencial direto (funciona com chave de instância OU global). A lista de instâncias só carrega com chave GLOBAL — normal falhar aqui se sua chave for de uma instância só. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
 					show: {
-						resource: ['message', 'status', 'group', 'community', 'channel', 'chat', 'contact', 'profile', 'history', 'schedule'],
+						resource: ['message', 'status', 'group', 'community', 'channel', 'chat', 'contact', 'profile', 'history', 'schedule', 'campaign', 'autoReply'],
 					},
 				},
 			},
@@ -703,7 +1239,20 @@ export class EvolutionGo implements INodeType {
 				description:
 					'Instância alvo da configuração. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 				displayOptions: {
-					show: { resource: ['instance'], operation: ['configureWebhook'] },
+					show: {
+						resource: ['instance'],
+						operation: [
+							'configureWebhook',
+							'webhookList',
+							'webhookAdd',
+							'webhookRemove',
+							'webhookTest',
+							'webhookDeliveries',
+							'webhookResend',
+							'getAdvancedSettings',
+							'updateAdvancedSettings',
+						],
+					},
 				},
 			},
 			{
@@ -776,6 +1325,7 @@ export class EvolutionGo implements INodeType {
 					{ name: 'Vídeo', value: 'video' },
 					{ name: 'Áudio (PTT)', value: 'audio' },
 					{ name: 'Documento', value: 'document' },
+					{ name: 'GIF (MP4 Enviado Como GIF Animado)', value: 'gif' },
 				],
 				default: 'image',
 				displayOptions: { show: { resource: ['message'], operation: ['sendMedia'] } },
@@ -1143,13 +1693,96 @@ export class EvolutionGo implements INodeType {
 
 			// ── sendSticker ──────────────────────────────────────────
 			{
-				displayName: 'URL Do Sticker',
+				displayName: 'Origem Do Sticker',
+				name: 'stickerSource',
+				type: 'options',
+				options: [
+					{ name: 'URL / Data URI / Base64', value: 'url' },
+					{ name: 'Binário (Propriedade Do Item)', value: 'binary' },
+				],
+				default: 'url',
+				description: 'Binário evita depender de uma URL acessível pelo servidor Evolution',
+				displayOptions: { show: { resource: ['message'], operation: ['sendSticker'] } },
+			},
+			{
+				displayName: 'Sticker (URL / Data URI / Base64)',
 				name: 'stickerUrl',
 				type: 'string',
 				default: '',
 				required: true,
-				description: 'URL de imagem (convertida para sticker WebP)',
+				placeholder: 'https://example.com/figurinha.png',
+				description:
+					'URL http(s), data URI (data:image/png;base64,...) ou base64 puro. PNG/JPG/WebP/GIF — vira WebP 512x512.',
+				displayOptions: { show: { resource: ['message'], operation: ['sendSticker'], stickerSource: ['url'] } },
+			},
+			{
+				displayName: 'Propriedade Binária',
+				name: 'stickerBinaryProperty',
+				type: 'string',
+				default: 'data',
+				required: true,
+				description: 'Nome da propriedade binária do item com a imagem (PNG/JPG/WebP/GIF)',
+				displayOptions: { show: { resource: ['message'], operation: ['sendSticker'], stickerSource: ['binary'] } },
+			},
+			{
+				displayName: 'Opções Do Sticker',
+				name: 'stickerOptions',
+				type: 'collection',
+				placeholder: 'Adicionar opção',
+				default: {},
 				displayOptions: { show: { resource: ['message'], operation: ['sendSticker'] } },
+				options: [
+					{
+						displayName: 'Nome Do Pacote',
+						name: 'packName',
+						type: 'string',
+						default: '',
+						description: 'Mostrado pelo WhatsApp ao tocar na figurinha',
+					},
+					{
+						displayName: 'Autor Do Pacote',
+						name: 'packPublisher',
+						type: 'string',
+						default: '',
+					},
+					{
+						displayName: 'Emojis',
+						name: 'emojis',
+						type: 'string',
+						default: '',
+						placeholder: '😀,🎉',
+						description: 'Até 3 emojis separados por vírgula',
+					},
+					{
+						displayName: 'Áudio (Experimental — Figurinha Com Som)',
+						name: 'audio',
+						type: 'string',
+						default: '',
+						description:
+							'Experimental: URL, data URI ou base64 de um áudio para a figurinha com som. Requer servidor Evolution GO com suporte ao campo "audio".',
+					},
+				],
+			},
+
+			// ── pollResults ──────────────────────────────────────────
+			{
+				displayName: 'ID Da Mensagem Da Enquete',
+				name: 'pollMessageId',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'ID devolvido no envio da enquete (Enviar Enquete)',
+				displayOptions: { show: { resource: ['message'], operation: ['pollResults'] } },
+			},
+			{
+				displayName: 'Opções Da Enquete (Uma Por Linha)',
+				name: 'pollResultOptions',
+				type: 'string',
+				typeOptions: { rows: 4 },
+				default: '',
+				description:
+					'Opcional: rotula os votos quando o servidor não guardou a definição da enquete (ex.: enquete enviada antes da atualização)',
+				displayOptions: { show: { resource: ['message'], operation: ['pollResults'] } },
 			},
 
 			// ── react / markRead / edit / delete ─────────────────────
@@ -1826,6 +2459,113 @@ export class EvolutionGo implements INodeType {
 				default: ['MESSAGE', 'BUTTON_CLICK'],
 				displayOptions: { show: { resource: ['instance'], operation: ['configureWebhook'] } },
 			},
+			{
+				displayName: 'URL Do Webhook Extra',
+				name: 'extraWebhookUrl',
+				type: 'string',
+				default: '',
+				required: true,
+				placeholder: 'https://n8n.example.com/webhook/outro-fluxo',
+				description: 'Webhook adicional que recebe os mesmos eventos do principal',
+				displayOptions: { show: { resource: ['instance'], operation: ['webhookAdd', 'webhookRemove'] } },
+			},
+			{
+				displayName: 'Filtros',
+				name: 'webhookDeliveryFilters',
+				type: 'collection',
+				placeholder: 'Adicionar filtro',
+				default: {},
+				displayOptions: { show: { resource: ['instance'], operation: ['webhookDeliveries'] } },
+				options: [
+					{
+						displayName: 'Status',
+						name: 'status',
+						type: 'options',
+						options: [
+							{ name: 'Todos', value: '' },
+							{ name: 'Com Falha', value: 'failed' },
+							{ name: 'Entregues', value: 'success' },
+							{ name: 'Pendentes', value: 'pending' },
+						],
+						default: '',
+					},
+					{
+						displayName: 'Limite',
+						name: 'limit',
+						type: 'number',
+						typeOptions: { minValue: 1, maxValue: 500 },
+						default: 100,
+					},
+				],
+			},
+			{
+				displayName: 'ID Da Entrega',
+				name: 'webhookDeliveryId',
+				type: 'string',
+				default: '',
+				required: true,
+				description: 'ID da entrega (veja "Entregas De Webhook (Log)")',
+				displayOptions: { show: { resource: ['instance'], operation: ['webhookResend'] } },
+			},
+			{
+				displayName: 'Configurações',
+				name: 'advancedSettings',
+				type: 'collection',
+				placeholder: 'Adicionar configuração',
+				default: {},
+				description: 'Só os campos informados mudam; o resto mantém o valor atual (o node lê as configurações antes de gravar)',
+				displayOptions: { show: { resource: ['instance'], operation: ['updateAdvancedSettings'] } },
+				options: [
+					{ displayName: 'Sempre Online', name: 'alwaysOnline', type: 'boolean', default: false },
+					{ displayName: 'Rejeitar Chamadas', name: 'rejectCall', type: 'boolean', default: false },
+					{ displayName: 'Mensagem Ao Rejeitar Chamada', name: 'msgRejectCall', type: 'string', default: '' },
+					{ displayName: 'Marcar Mensagens Como Lidas', name: 'readMessages', type: 'boolean', default: false },
+					{ displayName: 'Ignorar Grupos', name: 'ignoreGroups', type: 'boolean', default: false },
+					{ displayName: 'Ignorar Status', name: 'ignoreStatus', type: 'boolean', default: false },
+					{
+						displayName: 'Anti-Ban: Ativado',
+						name: 'antiBanEnabled',
+						type: 'boolean',
+						default: true,
+						description:
+							'Whether outgoing messages go one at a time through the anti-ban queue: after the limit within the window, each send waits a random delay',
+					},
+					{
+						displayName: 'Anti-Ban: Limite De Envios Na Janela',
+						name: 'antiBanLimit',
+						type: 'number',
+						default: 10,
+						description: 'Envios livres dentro da janela antes de começar a esperar (0 = 10)',
+					},
+					{
+						displayName: 'Anti-Ban: Janela (Segundos)',
+						name: 'antiBanWindowSec',
+						type: 'number',
+						default: 60,
+						description: 'Tamanho da janela deslizante (0 = 60)',
+					},
+					{
+						displayName: 'Anti-Ban: Atraso Mínimo (Ms)',
+						name: 'antiBanDelayMinMs',
+						type: 'number',
+						default: 0,
+					},
+					{
+						displayName: 'Anti-Ban: Atraso Máximo (Ms)',
+						name: 'antiBanDelayMaxMs',
+						type: 'number',
+						default: 0,
+						description: 'Teto de 120000 ms no servidor',
+					},
+					{
+						displayName: 'Anti-Ban: Simular Digitação',
+						name: 'antiBanTyping',
+						type: 'boolean',
+						default: false,
+						description: 'Whether to show "typing…" for a time proportional to the text before each send',
+					},
+				],
+			},
 		],
 	};
 
@@ -2206,7 +2946,8 @@ export class EvolutionGo implements INodeType {
 				};
 
 				if (resource === 'message') {
-					body.number = this.getNodeParameter('number', i) as string;
+					// pollResults é GET por ID da enquete — não tem campo Número.
+					if (operation !== 'pollResults') body.number = this.getNodeParameter('number', i) as string;
 
 					switch (operation) {
 						case 'sendText':
@@ -2375,16 +3116,81 @@ addExtras();
 
 						case 'sendContact':
 							endpoint = '/send/contact';
+							// A API lê ContactStruct{vcard: {fullName, phone}} e recusa sem eles;
+							// name/phone soltos (formato antigo do node) continuam indo por
+							// compatibilidade, mas quem vale é o vcard.
 							body.name = this.getNodeParameter('contactName', i) as string;
 							body.phone = this.getNodeParameter('contactPhone', i) as string;
+							body.vcard = { fullName: body.name, phone: body.phone };
 							addExtras();
 							break;
 
-						case 'sendSticker':
+						case 'sendSticker': {
 							endpoint = '/send/sticker';
-							body.url = this.getNodeParameter('stickerUrl', i) as string;
+							// A API lê StickerStruct{sticker} (URL, data URI ou base64 puro).
+							// O node enviava `url`, que o handler ignora ("sticker is required").
+							const stSource = this.getNodeParameter('stickerSource', i, 'url') as string;
+							if (stSource === 'binary') {
+								const prop =
+									(this.getNodeParameter('stickerBinaryProperty', i, 'data') as string).trim() || 'data';
+								const meta = this.helpers.assertBinaryData(i, prop);
+								const mime = (meta.mimeType || '').toLowerCase();
+								if (!mime.startsWith('image/')) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`A propriedade binária "${prop}" não é uma imagem (mime: ${mime || 'desconhecido'}).`,
+										{ itemIndex: i },
+									);
+								}
+								const buf = await this.helpers.getBinaryDataBuffer(i, prop);
+								if (buf.length > 5 * 1024 * 1024) {
+									throw new NodeOperationError(
+										this.getNode(),
+										`Imagem grande demais (${(buf.length / 1024 / 1024).toFixed(1)} MB). Limite 5 MB.`,
+										{ itemIndex: i },
+									);
+								}
+								body.sticker = `data:${mime};base64,${buf.toString('base64')}`;
+							} else {
+								const s = (this.getNodeParameter('stickerUrl', i, '') as string).trim();
+								if (!s) {
+									throw new NodeOperationError(this.getNode(), 'Sticker vazio', { itemIndex: i });
+								}
+								body.sticker = s;
+							}
+							const stOpts = this.getNodeParameter('stickerOptions', i, {}) as IDataObject;
+							if (stOpts.packName) body.packName = stOpts.packName;
+							if (stOpts.packPublisher) body.packPublisher = stOpts.packPublisher;
+							if (stOpts.emojis) {
+								const emojis = String(stOpts.emojis)
+									.split(',')
+									.map((e) => e.trim())
+									.filter(Boolean);
+								if (emojis.length > 3) {
+									throw new NodeOperationError(this.getNode(), 'Informe no máximo 3 emojis', {
+										itemIndex: i,
+									});
+								}
+								if (emojis.length) body.emojis = emojis;
+							}
+							const stAudio = String(stOpts.audio ?? '').trim();
+							if (stAudio) body.audio = stAudio;
 							addExtras();
 							break;
+						}
+
+						case 'pollResults': {
+							method = 'GET';
+							const pollId = (this.getNodeParameter('pollMessageId', i) as string).trim();
+							const opts = (this.getNodeParameter('pollResultOptions', i, '') as string)
+								.split('\n')
+								.map((o) => o.trim())
+								.filter(Boolean);
+							endpoint = `/polls/${encodeURIComponent(pollId)}/results${
+								opts.length ? `?options=${encodeURIComponent(opts.join('|'))}` : ''
+							}`;
+							break;
+						}
 
 						case 'react':
 							endpoint = '/message/react';
@@ -2812,11 +3618,71 @@ addExtras();
 						case 'create': {
 							endpoint = `/instance/schedule/${instId}`;
 							const opts = this.getNodeParameter('scheduleOptions', i, {}) as IDataObject;
-							body.type = 'text';
-							body.payload = {
+							// payload = mesmo corpo do /send/<tipo> correspondente.
+							const sType = this.getNodeParameter('scheduleType', i, 'text') as string;
+							const payload: IDataObject = {
 								number: this.getNodeParameter('scheduleNumber', i) as string,
-								text: this.getNodeParameter('scheduleText', i) as string,
 							};
+							switch (sType) {
+								case 'text':
+									payload.text = this.getNodeParameter('scheduleText', i) as string;
+									break;
+								case 'link': {
+									payload.text = this.getNodeParameter('scheduleText', i) as string;
+									payload.url = this.getNodeParameter('scheduleLinkUrl', i) as string;
+									const t = this.getNodeParameter('scheduleLinkTitle', i, '') as string;
+									const d = this.getNodeParameter('scheduleLinkDescription', i, '') as string;
+									const img = this.getNodeParameter('scheduleLinkImgUrl', i, '') as string;
+									if (t) payload.title = t;
+									if (d) payload.description = d;
+									if (img) payload.imgUrl = img;
+									break;
+								}
+								case 'media': {
+									payload.type = this.getNodeParameter('scheduleMediaType', i, 'image') as string;
+									payload.url = (this.getNodeParameter('scheduleMediaUrl', i) as string).trim();
+									const c = this.getNodeParameter('scheduleCaption', i, '') as string;
+									const f = this.getNodeParameter('scheduleFilename', i, '') as string;
+									if (c) payload.caption = c;
+									if (f) payload.filename = f;
+									break;
+								}
+								case 'poll': {
+									payload.question = this.getNodeParameter('schedulePollQuestion', i) as string;
+									payload.options = (this.getNodeParameter('schedulePollOptions', i) as string)
+										.split('\n')
+										.map((o) => o.trim())
+										.filter(Boolean);
+									if ((payload.options as string[]).length < 2) {
+										throw new NodeOperationError(this.getNode(), 'A enquete precisa de pelo menos 2 opções', {
+											itemIndex: i,
+										});
+									}
+									payload.maxAnswer = this.getNodeParameter('schedulePollMaxAnswer', i, 1) as number;
+									break;
+								}
+								case 'location': {
+									payload.latitude = this.getNodeParameter('scheduleLatitude', i) as number;
+									payload.longitude = this.getNodeParameter('scheduleLongitude', i) as number;
+									const n = this.getNodeParameter('scheduleLocationName', i, '') as string;
+									const a = this.getNodeParameter('scheduleAddress', i, '') as string;
+									if (n) payload.name = n;
+									if (a) payload.address = a;
+									break;
+								}
+								case 'contact':
+									payload.vcard = {
+										fullName: this.getNodeParameter('scheduleContactName', i) as string,
+										phone: this.getNodeParameter('scheduleContactPhone', i) as string,
+									};
+									break;
+								default:
+									throw new NodeOperationError(this.getNode(), `Tipo de agendamento desconhecido: ${sType}`, {
+										itemIndex: i,
+									});
+							}
+							body.type = sType;
+							body.payload = payload;
 							if (opts.timezone) body.timezone = opts.timezone;
 							if (opts.description) body.description = opts.description;
 							if ((this.getNodeParameter('scheduleMode', i) as string) === 'cron') {
@@ -2839,6 +3705,207 @@ addExtras();
 						case 'delete':
 							method = 'DELETE';
 							endpoint = `/instance/schedule/${instId}/${this.getNodeParameter('scheduleId', i) as string}`;
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'campaign') {
+					const instId = await instanceIdForPath();
+					const campaignPath = () =>
+						`/instance/campaign/${instId}/${encodeURIComponent(
+							(this.getNodeParameter('campaignId', i) as string).trim(),
+						)}`;
+					switch (operation) {
+						case 'create': {
+							endpoint = `/instance/campaign/${instId}`;
+							const cType = this.getNodeParameter('campaignType', i, 'text') as string;
+							body.type = cType;
+							const name = (this.getNodeParameter('campaignName', i, '') as string).trim();
+							if (name) body.name = name;
+							if (cType === 'media') {
+								const msg: IDataObject = {
+									mediaType: this.getNodeParameter('campaignMediaType', i, 'image') as string,
+									mediaUrl: (this.getNodeParameter('campaignMediaUrl', i) as string).trim(),
+								};
+								const cap = this.getNodeParameter('campaignCaption', i, '') as string;
+								const fn = this.getNodeParameter('campaignFilename', i, '') as string;
+								if (cap) msg.caption = cap;
+								if (fn) msg.filename = fn;
+								body.message = msg;
+							} else {
+								body.message = { text: this.getNodeParameter('campaignText', i) as string };
+							}
+							const numbers = (this.getNodeParameter('campaignNumbers', i, '') as string).trim();
+							if (numbers) body.numbers = numbers;
+							const rawRecipients = this.getNodeParameter('campaignRecipients', i, '[]');
+							let recipients: unknown = rawRecipients;
+							if (typeof rawRecipients === 'string') {
+								const s = rawRecipients.trim();
+								if (s) {
+									try {
+										recipients = JSON.parse(s);
+									} catch {
+										throw new NodeOperationError(
+											this.getNode(),
+											'Parâmetro "Destinatários (JSON)" não é JSON válido',
+											{ itemIndex: i },
+										);
+									}
+								} else {
+									recipients = [];
+								}
+							}
+							if (!Array.isArray(recipients)) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'"Destinatários (JSON)" deve ser um array: [{"number": "...", "name": "...", "vars": {...}}]',
+									{ itemIndex: i },
+								);
+							}
+							if (recipients.length) {
+								// number como string (JSON pode trazer número) e vars com valores string.
+								body.recipients = (recipients as IDataObject[]).map((r) => {
+									const out: IDataObject = { number: String(r.number ?? '') };
+									if (r.name) out.name = String(r.name);
+									if (r.vars && typeof r.vars === 'object') {
+										const vars: IDataObject = {};
+										for (const [k, v] of Object.entries(r.vars as IDataObject)) vars[k] = String(v ?? '');
+										out.vars = vars;
+									}
+									return out;
+								});
+							}
+							if (!numbers && !recipients.length) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Informe os destinatários em "Números" e/ou "Destinatários (JSON)"',
+									{ itemIndex: i },
+								);
+							}
+							body.start = this.getNodeParameter('campaignStart', i, false) as boolean;
+							const cOpts = this.getNodeParameter('campaignOptions', i, {}) as IDataObject;
+							if (cOpts.startAt) body.startAt = new Date(String(cOpts.startAt)).toISOString();
+							if (cOpts.delayMinMs) body.delayMinMs = cOpts.delayMinMs;
+							if (cOpts.delayMaxMs) body.delayMaxMs = cOpts.delayMaxMs;
+							break;
+						}
+						case 'list':
+							method = 'GET';
+							endpoint = `/instance/campaign/${instId}`;
+							break;
+						case 'get':
+							method = 'GET';
+							endpoint = campaignPath();
+							break;
+						case 'recipients': {
+							method = 'GET';
+							const f = this.getNodeParameter('campaignRecipientFilters', i, {}) as IDataObject;
+							const qs: string[] = [];
+							if (f.status) qs.push(`status=${encodeURIComponent(String(f.status))}`);
+							if (f.limit) qs.push(`limit=${Number(f.limit)}`);
+							if (f.offset) qs.push(`offset=${Number(f.offset)}`);
+							endpoint = `${campaignPath()}/recipients${qs.length ? `?${qs.join('&')}` : ''}`;
+							break;
+						}
+						case 'start':
+						case 'pause':
+						case 'cancel':
+						case 'retry':
+							endpoint = `${campaignPath()}/${operation}`;
+							break;
+						case 'delete':
+							method = 'DELETE';
+							endpoint = campaignPath();
+							break;
+						case 'optOutList':
+							method = 'GET';
+							endpoint = `/instance/optout/${instId}`;
+							break;
+						case 'optOutAdd':
+							endpoint = `/instance/optout/${instId}`;
+							body.number = (this.getNodeParameter('optOutNumber', i) as string).trim();
+							break;
+						case 'optOutRemove':
+							method = 'DELETE';
+							endpoint = `/instance/optout/${instId}/${encodeURIComponent(
+								(this.getNodeParameter('optOutNumber', i) as string).trim(),
+							)}`;
+							break;
+						default:
+							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
+								itemIndex: i,
+							});
+					}
+				} else if (resource === 'autoReply') {
+					const instId = await instanceIdForPath();
+					// Monta a regra a partir do formulário sobre uma base (vazia na
+					// criação; a regra atual na atualização — o PUT substitui tudo).
+					const buildRule = (base: IDataObject): IDataObject => {
+						const rule: IDataObject = { ...base };
+						delete rule.id;
+						delete rule.instanceId;
+						delete rule.matchCount;
+						delete rule.lastMatchAt;
+						delete rule.createdAt;
+						delete rule.updatedAt;
+						const trigger = this.getNodeParameter('autoReplyTrigger', i, 'keyword') as string;
+						rule.name = this.getNodeParameter('autoReplyName', i, '') as string;
+						rule.enabled = this.getNodeParameter('autoReplyEnabled', i, true) as boolean;
+						rule.trigger = trigger;
+						rule.response = this.getNodeParameter('autoReplyResponse', i) as string;
+						if (trigger === 'keyword') {
+							rule.matchType = this.getNodeParameter('autoReplyMatchType', i, 'contains') as string;
+							rule.pattern = this.getNodeParameter('autoReplyPattern', i) as string;
+						}
+						if (trigger === 'away') {
+							rule.days = (this.getNodeParameter('autoReplyDays', i, '1,2,3,4,5') as string).replace(/\s+/g, '');
+							rule.startTime = (this.getNodeParameter('autoReplyStartTime', i, '08:00') as string).trim();
+							rule.endTime = (this.getNodeParameter('autoReplyEndTime', i, '18:00') as string).trim();
+						}
+						const o = this.getNodeParameter('autoReplyOptions', i, {}) as IDataObject;
+						if (o.priority !== undefined) rule.priority = o.priority;
+						if (o.cooldownMinutes !== undefined) rule.cooldownMinutes = o.cooldownMinutes;
+						if (o.skipIfAgent !== undefined) rule.skipIfAgent = o.skipIfAgent;
+						if (o.timezone) rule.timezone = o.timezone;
+						return rule;
+					};
+					switch (operation) {
+						case 'list':
+							method = 'GET';
+							endpoint = `/instance/autoreply/${instId}`;
+							break;
+						case 'create':
+							endpoint = `/instance/autoreply/${instId}`;
+							Object.assign(body, buildRule({}));
+							break;
+						case 'update': {
+							const ruleId = (this.getNodeParameter('autoReplyRuleId', i) as string).trim();
+							const cur = (await this.helpers.httpRequest({
+								method: 'GET',
+								url: `${baseUrl}/instance/autoreply/${instId}`,
+								headers: { apikey: await instanceApiKey() },
+								json: true,
+								skipSslCertificateValidation: skipSsl,
+							})) as IDataObject;
+							const rules = (Array.isArray(cur?.rules) ? cur.rules : []) as IDataObject[];
+							const existing = rules.find((r) => r.id === ruleId);
+							if (!existing) {
+								throw new NodeOperationError(this.getNode(), `Regra não encontrada: ${ruleId}`, {
+									itemIndex: i,
+								});
+							}
+							method = 'PUT';
+							endpoint = `/instance/autoreply/${instId}/${encodeURIComponent(ruleId)}`;
+							Object.assign(body, buildRule(existing));
+							break;
+						}
+						case 'delete':
+							method = 'DELETE';
+							endpoint = `/instance/autoreply/${instId}/${encodeURIComponent(
+								(this.getNodeParameter('autoReplyRuleId', i) as string).trim(),
+							)}`;
 							break;
 						default:
 							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
@@ -2890,6 +3957,83 @@ addExtras();
 							body.webhookUrl = this.getNodeParameter('webhookUrl', i) as string;
 							body.subscribe = this.getNodeParameter('subscribeEvents', i) as string[];
 							break;
+						case 'webhookList':
+							method = 'GET';
+							endpoint = `/instance/webhooks/${await instanceIdForPath()}`;
+							break;
+						case 'webhookAdd':
+							endpoint = `/instance/webhooks/${await instanceIdForPath()}`;
+							body.url = (this.getNodeParameter('extraWebhookUrl', i) as string).trim();
+							break;
+						case 'webhookRemove':
+							method = 'DELETE';
+							endpoint = `/instance/webhooks/${await instanceIdForPath()}`;
+							body.url = (this.getNodeParameter('extraWebhookUrl', i) as string).trim();
+							break;
+						case 'webhookTest':
+							endpoint = `/instance/webhooks/${await instanceIdForPath()}/test`;
+							break;
+						case 'webhookDeliveries': {
+							method = 'GET';
+							const f = this.getNodeParameter('webhookDeliveryFilters', i, {}) as IDataObject;
+							const qs: string[] = [];
+							if (f.status) qs.push(`status=${encodeURIComponent(String(f.status))}`);
+							if (f.limit) qs.push(`limit=${Number(f.limit)}`);
+							endpoint = `/instance/webhooks/${await instanceIdForPath()}/deliveries${
+								qs.length ? `?${qs.join('&')}` : ''
+							}`;
+							break;
+						}
+						case 'webhookResend':
+							endpoint = `/instance/webhooks/${await instanceIdForPath()}/deliveries/${encodeURIComponent(
+								(this.getNodeParameter('webhookDeliveryId', i) as string).trim(),
+							)}/resend`;
+							break;
+						case 'getAdvancedSettings':
+							method = 'GET';
+							endpoint = `/instance/${await instanceIdForPath()}/advanced-settings`;
+							break;
+						case 'updateAdvancedSettings': {
+							// O PUT grava TODOS os campos; lê o atual e muda só o informado.
+							const instId = await instanceIdForPath();
+							const current = (await this.helpers.httpRequest({
+								method: 'GET',
+								url: `${baseUrl}/instance/${instId}/advanced-settings`,
+								headers: { apikey: await instanceApiKey() },
+								json: true,
+								skipSslCertificateValidation: skipSsl,
+							})) as IDataObject;
+							const base = ((current?.data as IDataObject) ?? current ?? {}) as IDataObject;
+							const changes = this.getNodeParameter('advancedSettings', i, {}) as IDataObject;
+							if (!Object.keys(changes).length) {
+								throw new NodeOperationError(
+									this.getNode(),
+									'Adicione pelo menos uma configuração para atualizar',
+									{ itemIndex: i },
+								);
+							}
+							const keys = [
+								'alwaysOnline',
+								'rejectCall',
+								'msgRejectCall',
+								'readMessages',
+								'ignoreGroups',
+								'ignoreStatus',
+								'antiBanEnabled',
+								'antiBanLimit',
+								'antiBanWindowSec',
+								'antiBanDelayMinMs',
+								'antiBanDelayMaxMs',
+								'antiBanTyping',
+							];
+							for (const k of keys) {
+								if (changes[k] !== undefined) body[k] = changes[k];
+								else if (base[k] !== undefined) body[k] = base[k];
+							}
+							method = 'PUT';
+							endpoint = `/instance/${instId}/advanced-settings`;
+							break;
+						}
 						default:
 							throw new NodeOperationError(this.getNode(), `Operação desconhecida: ${operation}`, {
 								itemIndex: i,
